@@ -28,20 +28,20 @@ def load_documents(file_path):
         text_splitter=get_text_splitter()
     )
 
-def load_pdf_documents(pdf_path: Path, chunk_size: int = 1000, chunk_overlap: int = 200) -> list[Document]:
-    """Load and process PDF documents."""
+def load_pdf_documents(pdf_path: Path, chunk_size: int = None, chunk_overlap: int = None) -> list[Document]:
+    """Load and process PDF documents with optimized chunking."""
     processor = PDFProcessor()
     return processor.pdf_to_documents(pdf_path, chunk_size, chunk_overlap)
 
 def load_documents_from_directory(directory_path: Path) -> list[Document]:
-    """Load documents from a directory containing text and PDF files."""
+    """Load documents from a directory containing text and PDF files with optimized chunking."""
     all_documents = []
     directory = Path(directory_path)
     
     if not directory.exists():
         raise FileNotFoundError(f"Directory not found: {directory_path}")
     
-    # Process text files
+    # Process text files with optimized text chunking
     for txt_file in directory.glob("*.txt"):
         try:
             print(f"Processing text file: {txt_file.name}")
@@ -51,7 +51,7 @@ def load_documents_from_directory(directory_path: Path) -> list[Document]:
         except Exception as e:
             print(f"  ✗ Error processing {txt_file.name}: {e}")
     
-    # Process PDF files
+    # Process PDF files with optimized PDF chunking (defaults to 1800/270)
     processor = PDFProcessor()
     pdf_docs = processor.process_pdf_directory(directory)
     all_documents.extend(pdf_docs)
@@ -89,10 +89,11 @@ def load_embedding_model(model_vendor: ModelVendor):
         raise ValueError(f"Unsupported model vendor: {model_vendor}")
 
 def get_text_splitter():
+    """Get optimized text splitter for mixed factual content."""
     return CharacterTextSplitter(
         separator="\n",
-        chunk_size=200, 
-        chunk_overlap=0
+        chunk_size=300,  # Increased from 200 for better context
+        chunk_overlap=50  # Added overlap for better continuity
     )
 
 def store_to_chroma(documents: list[Document], model_vendor: ModelVendor) -> Chroma:

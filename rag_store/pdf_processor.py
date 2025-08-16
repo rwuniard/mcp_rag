@@ -17,6 +17,11 @@ class PDFProcessor:
     
     def __init__(self):
         self.supported_extensions = {'.pdf'}
+        # Optimized chunking parameters based on industry best practices (2024)
+        self.default_pdf_chunk_size = 1800  # Technical content benefits from larger context
+        self.default_pdf_overlap = 270      # 15% overlap ratio
+        self.default_text_chunk_size = 1200 # Mixed factual content
+        self.default_text_overlap = 200     # ~17% overlap ratio
     
     def is_pdf_file(self, file_path: Path) -> bool:
         """Check if the file is a supported PDF file."""
@@ -57,18 +62,23 @@ class PDFProcessor:
         except Exception as e:
             raise Exception(f"Failed to process PDF {pdf_path}: {str(e)}")
     
-    def pdf_to_documents(self, pdf_path: Path, chunk_size: int = 1000, chunk_overlap: int = 200) -> List[Document]:
+    def pdf_to_documents(self, pdf_path: Path, chunk_size: int = None, chunk_overlap: int = None) -> List[Document]:
         """
-        Convert PDF file to LangChain Document objects with chunking.
+        Convert PDF file to LangChain Document objects with optimized chunking.
         
         Args:
             pdf_path: Path to the PDF file
-            chunk_size: Maximum size of each text chunk
-            chunk_overlap: Number of characters to overlap between chunks
+            chunk_size: Maximum size of each text chunk (defaults to optimized PDF chunk size)
+            chunk_overlap: Number of characters to overlap between chunks (defaults to optimized overlap)
             
         Returns:
             List of LangChain Document objects
         """
+        # Use optimized defaults if not specified
+        if chunk_size is None:
+            chunk_size = self.default_pdf_chunk_size
+        if chunk_overlap is None:
+            chunk_overlap = self.default_pdf_overlap
         # Extract full text from PDF
         full_text = self.extract_text_from_pdf(pdf_path)
         
@@ -85,7 +95,9 @@ class PDFProcessor:
                     "chunk_id": i,
                     "document_id": pdf_path.stem,
                     "file_type": "pdf",
-                    "total_chunks": len(chunks)
+                    "total_chunks": len(chunks),
+                    "chunk_size": chunk_size,
+                    "chunk_overlap": chunk_overlap
                 }
             )
             documents.append(doc)
@@ -136,18 +148,23 @@ class PDFProcessor:
         
         return chunks
     
-    def process_pdf_directory(self, directory_path: Path, chunk_size: int = 1000, chunk_overlap: int = 200) -> List[Document]:
+    def process_pdf_directory(self, directory_path: Path, chunk_size: int = None, chunk_overlap: int = None) -> List[Document]:
         """
-        Process all PDF files in a directory.
+        Process all PDF files in a directory with optimized chunking.
         
         Args:
             directory_path: Path to directory containing PDF files
-            chunk_size: Maximum size of each text chunk
-            chunk_overlap: Number of characters to overlap between chunks
+            chunk_size: Maximum size of each text chunk (defaults to optimized PDF chunk size)
+            chunk_overlap: Number of characters to overlap between chunks (defaults to optimized overlap)
             
         Returns:
             List of all Document objects from all PDFs
         """
+        # Use optimized defaults if not specified
+        if chunk_size is None:
+            chunk_size = self.default_pdf_chunk_size
+        if chunk_overlap is None:
+            chunk_overlap = self.default_pdf_overlap
         all_documents = []
         
         if not directory_path.exists():
