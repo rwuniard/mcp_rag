@@ -8,7 +8,7 @@ from fastmcp import FastMCP
 from rag_fetch.search_similarity import similarity_search_mcp_tool, ModelVendor
 
 # Initialize FastMCP server
-mcp = FastMCP("RAG Knowledge Base")
+mcp = FastMCP("RAG World Fact Knowledge Base")
 
 @mcp.tool
 def search_documents(query: str, limit: int = 6) -> str:
