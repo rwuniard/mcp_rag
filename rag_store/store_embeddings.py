@@ -21,55 +21,51 @@ class ModelVendor (Enum):
     OPENAI = "openai"
     GOOGLE = "google"
 
-def load_documents(file_path):
+def load_txt_documents(file_path):
     """Load documents from text files."""
     loader = TextLoader(file_path)
     return loader.load_and_split(
         text_splitter=get_text_splitter()
     )
 
-def load_pdf_documents(pdf_path: Path, chunk_size: int = None, chunk_overlap: int = None) -> list[Document]:
-    """Load and process PDF documents with optimized chunking."""
-    processor = PDFProcessor()
-    return processor.pdf_to_documents(pdf_path, chunk_size, chunk_overlap)
 
-def load_documents_from_directory(directory_path: Path) -> list[Document]:
-    """Load documents from a directory containing text and PDF files with optimized chunking."""
-    all_documents = []
-    directory = Path(directory_path)
-    
-    if not directory.exists():
-        raise FileNotFoundError(f"Directory not found: {directory_path}")
-    
-    # Process text files with optimized text chunking
-    for txt_file in directory.glob("*.txt"):
+def process_text_files(directory_path: Path) -> list[Document]:
+    """Process all .txt files in directory using CharacterTextSplitter."""
+    documents = []
+    for txt_file in directory_path.glob("*.txt"):
         try:
             print(f"Processing text file: {txt_file.name}")
-            docs = load_documents(str(txt_file))
-            all_documents.extend(docs)
+            docs = load_txt_documents(str(txt_file))
+            documents.extend(docs)
             print(f"  ✓ Loaded {len(docs)} chunks from {txt_file.name}")
         except Exception as e:
             print(f"  ✗ Error processing {txt_file.name}: {e}")
-    
-    # Process PDF files with RecursiveCharacterTextSplitter (proven better search quality)
+    return documents
+
+def process_pdf_files(directory_path: Path) -> list[Document]:
+    """Process all .pdf files in directory using RecursiveCharacterTextSplitter."""
+    documents = []
     processor = PDFProcessor()
     
-    # Use recursive method for better search quality
-    pdf_files = [f for f in directory.glob("*.pdf") if f.is_file()]
-    pdf_docs = []
-    
-    for pdf_file in pdf_files:
+    for pdf_file in directory_path.glob("*.pdf"):
         try:
             print(f"Processing PDF: {pdf_file.name}")
             docs = processor.pdf_to_documents_recursive(pdf_file)
-            pdf_docs.extend(docs)
+            documents.extend(docs)
             print(f"  ✓ Extracted {len(docs)} chunks using RecursiveCharacterTextSplitter")
         except Exception as e:
             print(f"  ✗ Error processing {pdf_file.name}: {e}")
+    return documents
+
+def load_documents_from_directory(directory_path: Path) -> list[Document]:
+    """Load all supported documents from directory."""
+    directory = Path(directory_path)
+    if not directory.exists():
+        raise FileNotFoundError(f"Directory not found: {directory_path}")
     
-    # Add PDF documents to the total collection
-    all_documents.extend(pdf_docs)
-    
+    all_documents = []
+    all_documents.extend(process_text_files(directory))
+    all_documents.extend(process_pdf_files(directory))
     return all_documents
 
 def ensure_data_directory(model_vendor: ModelVendor) -> Path:
@@ -139,7 +135,7 @@ def main():
     # Load individual facts.txt if it exists
     facts_file = current_dir / "facts.txt"
     if facts_file.exists():
-        fact_doc = load_documents(str(facts_file))
+        fact_doc = load_txt_documents(str(facts_file))
         all_documents.extend(fact_doc)
         print(f"Loaded {len(fact_doc)} chunks from facts.txt")
     
