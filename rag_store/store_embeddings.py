@@ -9,6 +9,7 @@ from langchain_core.embeddings import Embeddings
 from enum import Enum
 from pathlib import Path
 import os
+from pdf_processor import PDFProcessor
 
 load_dotenv()
 
@@ -21,10 +22,41 @@ class ModelVendor (Enum):
     GOOGLE = "google"
 
 def load_documents(file_path):
+    """Load documents from text files."""
     loader = TextLoader(file_path)
     return loader.load_and_split(
         text_splitter=get_text_splitter()
     )
+
+def load_pdf_documents(pdf_path: Path, chunk_size: int = 1000, chunk_overlap: int = 200) -> list[Document]:
+    """Load and process PDF documents."""
+    processor = PDFProcessor()
+    return processor.pdf_to_documents(pdf_path, chunk_size, chunk_overlap)
+
+def load_documents_from_directory(directory_path: Path) -> list[Document]:
+    """Load documents from a directory containing text and PDF files."""
+    all_documents = []
+    directory = Path(directory_path)
+    
+    if not directory.exists():
+        raise FileNotFoundError(f"Directory not found: {directory_path}")
+    
+    # Process text files
+    for txt_file in directory.glob("*.txt"):
+        try:
+            print(f"Processing text file: {txt_file.name}")
+            docs = load_documents(str(txt_file))
+            all_documents.extend(docs)
+            print(f"  ✓ Loaded {len(docs)} chunks from {txt_file.name}")
+        except Exception as e:
+            print(f"  ✗ Error processing {txt_file.name}: {e}")
+    
+    # Process PDF files
+    processor = PDFProcessor()
+    pdf_docs = processor.process_pdf_directory(directory)
+    all_documents.extend(pdf_docs)
+    
+    return all_documents
 
 def ensure_data_directory(model_vendor: ModelVendor) -> Path:
     """Ensure the data directory exists for the specified model vendor."""
@@ -82,23 +114,48 @@ def store_to_chroma(documents: list[Document], model_vendor: ModelVendor) -> Chr
     return vectorstore
 
 def main():
-    """Store facts.txt documents to ChromaDB using Google embeddings."""
+    """Store documents (text and PDF) to ChromaDB using Google embeddings."""
     print("Store embeddings to Chroma!")
     
-    # Load documents from facts.txt
-    fact_doc = load_documents("facts.txt")
-    print(f"Loaded {len(fact_doc)} document chunks")
+    # Try to load from current directory first
+    current_dir = Path(".")
+    all_documents = []
+    
+    # Load individual facts.txt if it exists
+    facts_file = current_dir / "facts.txt"
+    if facts_file.exists():
+        fact_doc = load_documents(str(facts_file))
+        all_documents.extend(fact_doc)
+        print(f"Loaded {len(fact_doc)} chunks from facts.txt")
+    
+    # Load all documents from current directory (including PDFs)
+    try:
+        dir_docs = load_documents_from_directory(current_dir)
+        # Avoid duplicating facts.txt if already loaded
+        if facts_file.exists():
+            dir_docs = [doc for doc in dir_docs if doc.metadata.get('source') != str(facts_file)]
+        all_documents.extend(dir_docs)
+        print(f"Loaded {len(dir_docs)} additional chunks from directory")
+    except Exception as e:
+        print(f"Error loading from directory: {e}")
+    
+    if not all_documents:
+        print("No documents found. Please ensure you have .txt or .pdf files in the current directory.")
+        return
+    
+    print(f"Total documents to store: {len(all_documents)}")
 
     # Store documents using Google embeddings
-    vectorstore = store_to_chroma(fact_doc, ModelVendor.GOOGLE)
+    vectorstore = store_to_chroma(all_documents, ModelVendor.GOOGLE)
     print(f"Successfully stored documents. Database location: {DATA_DIR / 'chroma_db_google'}")
     
     # Test the storage by doing a quick search
     test_results = vectorstore.similarity_search("interesting fact", k=6)
     print(f"Test search returned {len(test_results)} results")
-    for result in test_results: 
-        print(result.page_content)
-        print(result.metadata)
+    for i, result in enumerate(test_results, 1): 
+        print(f"Result {i}:")
+        print(f"Content: {result.page_content[:200]}...")
+        print(f"Metadata: {result.metadata}")
         print("--------------------------------")
 
 

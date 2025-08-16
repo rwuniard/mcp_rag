@@ -14,7 +14,8 @@ A RAG (Retrieval-Augmented Generation) system built with Python that will be wra
 2. **Store Documents**:
    ```bash
    cd rag_store
-   uv run python store_embeddings.py  # Store facts.txt to ChromaDB
+   # Place your .txt and .pdf files in this directory
+   uv run python store_embeddings.py  # Store all documents to ChromaDB
    ```
 
 3. **Test Search**:
@@ -37,8 +38,9 @@ A RAG (Retrieval-Augmented Generation) system built with Python that will be wra
 - `uv run python -m <module>` - Run specific module
 
 **RAG Operations**:
-- `cd rag_store && uv run python store_embeddings.py` - Store documents to ChromaDB
+- `cd rag_store && uv run python store_embeddings.py` - Store text and PDF documents to ChromaDB
 - `cd rag_fetch && uv run python search_similarity.py` - Test similarity search
+- `uv run python main.py "<query>"` - Search documents via CLI
 - `uv run python mcp_server.py` - Start MCP server for AI assistants
 
 ## Architecture
@@ -52,8 +54,10 @@ A RAG (Retrieval-Augmented Generation) system built with Python that will be wra
 - `rag_fetch/` - Document retrieval and search functionality
   - `search_similarity.py` - Semantic search with MCP-compatible responses
 - `rag_store/` - Document storage and embedding management
-  - `store_embeddings.py` - Store documents to ChromaDB
-  - `facts.txt` - Sample document collection
+  - `store_embeddings.py` - Store text and PDF documents to ChromaDB
+  - `pdf_processor.py` - PDF text extraction and processing
+  - `facts.txt` - Sample text document collection
+  - `*.pdf` - PDF documents for processing
 
 **MCP Integration Design**:
 The RAG system exposes document search through a single MCP tool:
@@ -70,6 +74,7 @@ The RAG system exposes document search through a single MCP tool:
 - **LangChain-Google-GenAI** (>=2.0.10) - Google AI integration
 - **LangChain-OpenAI** (>=0.3.30) - OpenAI integration (optional)
 - **Google-GenerativeAI** (>=0.8.5) - Google's generative AI client
+- **PyPDF** (>=5.1.0) - PDF text extraction and processing
 - **python-dotenv** (>=1.1.1) - Environment variable management
 
 **Technology Stack**:
@@ -83,7 +88,8 @@ The RAG system exposes document search through a single MCP tool:
 ## Features
 
 ### Current Implementation
-- ✅ **Document Storage**: Store text documents with ChromaDB vector embeddings
+- ✅ **Document Storage**: Store text and PDF documents with ChromaDB vector embeddings
+- ✅ **PDF Processing**: Extract text from PDF files with intelligent chunking
 - ✅ **Semantic Search**: Query documents using natural language with similarity scoring
 - ✅ **MCP-Compatible Responses**: JSON-formatted responses ready for MCP integration
 - ✅ **Multi-Model Support**: Google and OpenAI embedding models
@@ -108,6 +114,14 @@ The RAG system exposes document search through a single MCP tool:
   "status": "success"
 }
 ```
+
+### PDF Processing Features
+- **Automatic Text Extraction**: Extracts text content from PDF files using PyPDF
+- **Intelligent Chunking**: Splits long documents at sentence/word boundaries for optimal embedding
+- **Page-Aware Processing**: Maintains page information in extracted text
+- **Metadata Preservation**: Includes source file, chunk ID, and document type in search results
+- **Mixed Content Support**: Processes both text (.txt) and PDF (.pdf) files from the same directory
+- **Error Handling**: Graceful handling of corrupted or unreadable PDF files
 
 ## Environment Setup
 
