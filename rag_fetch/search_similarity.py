@@ -197,7 +197,7 @@ def main():
         # Test with Google embeddings
         print("\\n1. Testing basic similarity search...")
         vectorstore = load_vectorstore(ModelVendor.GOOGLE)
-        results = search_similarity("What is interesting fact about the English language?", vectorstore)
+        results = search_similarity("What is class in python?", vectorstore)
 
         # for result in results:
         #     print(result.page_content)

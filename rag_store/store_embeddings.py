@@ -67,6 +67,9 @@ def load_documents_from_directory(directory_path: Path) -> list[Document]:
         except Exception as e:
             print(f"  ✗ Error processing {pdf_file.name}: {e}")
     
+    # Add PDF documents to the total collection
+    all_documents.extend(pdf_docs)
+    
     return all_documents
 
 def ensure_data_directory(model_vendor: ModelVendor) -> Path:
@@ -170,12 +173,15 @@ def main():
         print(f"Metadata: {result.metadata}")
         print("--------------------------------")
 
-    test_results_pdf = vectorstore.similarity_search("find me a python class example.", k=6)
+    query = "Find me a python class example."
+    print(f"Query: {query}")
+    print("--------------------------------")
+    test_results_pdf = vectorstore.similarity_search(query, k=3)
     print(f"Test search returned {len(test_results_pdf)} results")
-    for i, result in enumerate(test_results_pdf, 1): 
+    for i, result_pdf in enumerate(test_results_pdf, 1): 
         print(f"Result {i}:")
-        print(f"Content: {result.page_content[:200]}...")
-        print(f"Metadata: {result.metadata}")
+        print(f"Content: {result_pdf.page_content[:200]}...")
+        print(f"Metadata: {result_pdf.metadata}")
         print("--------------------------------")
 
 
