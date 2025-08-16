@@ -23,6 +23,11 @@ A RAG (Retrieval-Augmented Generation) system built with Python that will be wra
    uv run python search_similarity.py  # Test similarity search
    ```
 
+4. **Start MCP Server**:
+   ```bash
+   uv run python mcp_server.py  # Start MCP server for AI assistants
+   ```
+
 ## Development Commands
 
 **Package Management (uv)**:
@@ -34,16 +39,16 @@ A RAG (Retrieval-Augmented Generation) system built with Python that will be wra
 **RAG Operations**:
 - `cd rag_store && uv run python store_embeddings.py` - Store documents to ChromaDB
 - `cd rag_fetch && uv run python search_similarity.py` - Test similarity search
-- `uv run python test_search.py` - Test MCP-compatible search responses
+- `uv run python mcp_server.py` - Start MCP server for AI assistants
 
 ## Architecture
 
 **Project Structure**:
 - `main.py` - Application entry point
+- `mcp_server.py` - MCP (Model Context Protocol) server for AI assistants
 - `data/` - Centralized database storage
   - `chroma_db_google/` - Google embeddings database
   - `chroma_db_openai/` - OpenAI embeddings database (if used)
-- `mcp_server/` - MCP (Model Context Protocol) server implementation
 - `rag_fetch/` - Document retrieval and search functionality
   - `search_similarity.py` - Semantic search with MCP-compatible responses
 - `rag_store/` - Document storage and embedding management
@@ -51,19 +56,19 @@ A RAG (Retrieval-Augmented Generation) system built with Python that will be wra
   - `facts.txt` - Sample document collection
 
 **MCP Integration Design**:
-The RAG system will be exposed through MCP server tools, allowing AI assistants to:
-- Query document collections using semantic search
-- Retrieve relevant context for answering questions
-- Add new documents to the knowledge base
-- Manage embeddings and vector storage
+The RAG system exposes document search through a single MCP tool:
+- `search_documents(query, limit)` - Semantic search using Google embeddings
+- Returns JSON with content, metadata, and relevance scores
+- Hardcoded to use Google embeddings for simplicity and consistency
 
 **Core Dependencies**:
 - **ChromaDB** (>=1.0.17) - Vector database for embeddings storage
+- **FastMCP** (>=2.11.3) - MCP server framework
 - **LangChain** (>=0.3.27) - RAG orchestration framework
 - **LangChain-Chroma** (>=0.2.5) - ChromaDB integration
 - **LangChain-Community** (>=0.3.27) - Community integrations
 - **LangChain-Google-GenAI** (>=2.0.10) - Google AI integration
-- **LangChain-OpenAI** (>=0.3.30) - OpenAI integration
+- **LangChain-OpenAI** (>=0.3.30) - OpenAI integration (optional)
 - **Google-GenerativeAI** (>=0.8.5) - Google's generative AI client
 - **python-dotenv** (>=1.1.1) - Environment variable management
 
@@ -110,6 +115,91 @@ Required environment variables in `.env`:
 ```bash
 GOOGLE_API_KEY=your_google_api_key_here
 # OPENAI_API_KEY=your_openai_api_key_here  # Optional, for OpenAI embeddings
+```
+
+## MCP Integration
+
+### Adding to Claude Desktop
+
+Add this to your Claude Desktop configuration file:
+
+**Location**: `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
+
+```json
+{
+  "mcpServers": {
+    "rag-knowledge-base": {
+      "command": "/usr/local/bin/uv",
+      "args": [
+        "--directory", "/Users/YOUR_USERNAME/Projects/python/mcp_rag",
+        "run", "python", "mcp_server.py"
+      ]
+    }
+  }
+}
+```
+
+### Adding to Cursor
+
+Add this to your Cursor MCP configuration:
+
+**Location**: Cursor Settings → MCP Servers
+
+```json
+{
+  "mcpServers": {
+    "rag-knowledge-base": {
+      "command": "/usr/local/bin/uv",
+      "args": [
+        "--directory", "/absolute/path/to/mcp_rag",
+        "run", "python", "mcp_server.py"
+      ]
+    }
+  }
+}
+```
+
+### Configuration Steps
+
+1. **Find your uv path** (after activating virtual environment):
+   ```bash
+   # Activate virtual environment first (if using one)
+   # source venv/bin/activate  # or your preferred activation method
+   
+   which uv
+   # Usually: /usr/local/bin/uv or /opt/homebrew/bin/uv
+   # Note: Use the uv path from your activated environment
+   ```
+
+2. **Get absolute project path**:
+   ```bash
+   pwd
+   # Use this path in the "directory" field
+   ```
+
+3. **Set environment variables** (create `.env` in project root):
+   ```bash
+   GOOGLE_API_KEY=your_google_api_key_here
+   ```
+
+4. **Ensure documents are stored**:
+   ```bash
+   cd rag_store && uv run python store_embeddings.py
+   ```
+
+### Available MCP Tools
+
+Once connected, your AI assistant will have access to:
+
+- **`search_documents`**: Search for relevant world facts and interesting information
+  - Args: `query` (string), `limit` (optional int, default: 6)
+  - Returns: JSON with search results, metadata, and relevance scores
+
+### Example Usage in AI Chat
+
+```
+User: "Can you search for interesting facts about animals?"
+AI: [Uses search_documents tool] Here are some fascinating animal facts I found...
 ```
 
 ## Development Notes
