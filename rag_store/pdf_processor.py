@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import List
 
 from langchain.schema import Document
+from langchain_community.document_loaders import PyPDFLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from pypdf import PdfReader
 
 
@@ -61,6 +63,54 @@ class PDFProcessor:
             
         except Exception as e:
             raise Exception(f"Failed to process PDF {pdf_path}: {str(e)}")
+    
+    def pdf_to_documents_recursive(self, pdf_path: Path, chunk_size: int = None, chunk_overlap: int = None) -> List[Document]:
+        """
+        Convert PDF file to LangChain Document objects using RecursiveCharacterTextSplitter.
+        This approach provides better text splitting at natural boundaries.
+        
+        Args:
+            pdf_path: Path to the PDF file
+            chunk_size: Maximum size of each text chunk (defaults to optimized PDF chunk size)
+            chunk_overlap: Number of characters to overlap between chunks (defaults to optimized overlap)
+            
+        Returns:
+            List of LangChain Document objects
+        """
+        # Use optimized defaults if not specified
+        if chunk_size is None:
+            chunk_size = self.default_pdf_chunk_size
+        if chunk_overlap is None:
+            chunk_overlap = self.default_pdf_overlap
+            
+        # Use PyPDFLoader for better LangChain integration
+        loader = PyPDFLoader(str(pdf_path))
+        
+        # Use RecursiveCharacterTextSplitter for intelligent splitting
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            length_function=len,
+            separators=["\n\n", "\n", " ", ""]  # Split at paragraphs, then lines, then words
+        )
+        
+        # Load and split the PDF
+        documents = loader.load_and_split(text_splitter)
+        
+        # Enhance metadata with our comprehensive tracking
+        for i, doc in enumerate(documents):
+            doc.metadata.update({
+                "source": str(pdf_path),
+                "chunk_id": i,
+                "document_id": pdf_path.stem,
+                "file_type": "pdf",
+                "total_chunks": len(documents),
+                "chunk_size": chunk_size,
+                "chunk_overlap": chunk_overlap,
+                "splitting_method": "recursive"
+            })
+        
+        return documents
     
     def pdf_to_documents(self, pdf_path: Path, chunk_size: int = None, chunk_overlap: int = None) -> List[Document]:
         """
@@ -148,6 +198,58 @@ class PDFProcessor:
         
         return chunks
     
+    def compare_splitting_methods(self, pdf_path: Path) -> dict:
+        """
+        Compare custom vs recursive text splitting methods.
+        
+        Args:
+            pdf_path: Path to the PDF file
+            
+        Returns:
+            Dictionary with comparison results
+        """
+        print(f"Comparing splitting methods for {pdf_path.name}...")
+        
+        # Test custom method
+        try:
+            custom_docs = self.pdf_to_documents(pdf_path)
+            custom_chunks = len(custom_docs)
+            custom_avg_length = sum(len(doc.page_content) for doc in custom_docs) / len(custom_docs)
+        except Exception as e:
+            custom_chunks = 0
+            custom_avg_length = 0
+            print(f"Custom method failed: {e}")
+        
+        # Test recursive method
+        try:
+            recursive_docs = self.pdf_to_documents_recursive(pdf_path)
+            recursive_chunks = len(recursive_docs)
+            recursive_avg_length = sum(len(doc.page_content) for doc in recursive_docs) / len(recursive_docs)
+        except Exception as e:
+            recursive_chunks = 0
+            recursive_avg_length = 0
+            print(f"Recursive method failed: {e}")
+        
+        results = {
+            "pdf_file": str(pdf_path),
+            "custom_method": {
+                "chunks": custom_chunks,
+                "avg_chunk_length": round(custom_avg_length, 1),
+                "method": "custom_chunking"
+            },
+            "recursive_method": {
+                "chunks": recursive_chunks,
+                "avg_chunk_length": round(recursive_avg_length, 1),
+                "method": "recursive_text_splitter"
+            },
+            "recommendation": "recursive" if recursive_chunks > 0 else "custom"
+        }
+        
+        print(f"Custom method: {custom_chunks} chunks, avg length: {custom_avg_length:.1f}")
+        print(f"Recursive method: {recursive_chunks} chunks, avg length: {recursive_avg_length:.1f}")
+        
+        return results
+    
     def process_pdf_directory(self, directory_path: Path, chunk_size: int = None, chunk_overlap: int = None) -> List[Document]:
         """
         Process all PDF files in a directory with optimized chunking.
@@ -191,25 +293,55 @@ class PDFProcessor:
 
 
 def main():
-    """Example usage of PDF processor."""
+    """Example usage and comparison of PDF processor methods."""
     processor = PDFProcessor()
     
-    # Example: Process a single PDF file
-    pdf_path = Path("sample.pdf")
-    if pdf_path.exists():
-        try:
-            documents = processor.pdf_to_documents(pdf_path)
-            print(f"Processed {pdf_path.name}: {len(documents)} chunks")
+    # Look for PDF files to test
+    test_files = ["thinkpython.pdf", "sample.pdf"]
+    pdf_found = False
+    
+    for filename in test_files:
+        pdf_path = Path(filename)
+        if pdf_path.exists():
+            pdf_found = True
+            print(f"\n{'='*60}")
+            print(f"Testing with {pdf_path.name}")
+            print(f"{'='*60}")
             
-            # Show first chunk as example
-            if documents:
-                print("\nFirst chunk preview:")
-                print(f"Content: {documents[0].page_content[:200]}...")
-                print(f"Metadata: {documents[0].metadata}")
-        except Exception as e:
-            print(f"Error: {e}")
-    else:
-        print("No sample.pdf found. Place a PDF file in the current directory to test.")
+            try:
+                # Compare both methods
+                comparison = processor.compare_splitting_methods(pdf_path)
+                
+                print(f"\n📊 Comparison Results:")
+                print(f"Custom Method: {comparison['custom_method']['chunks']} chunks")
+                print(f"Recursive Method: {comparison['recursive_method']['chunks']} chunks")
+                print(f"Recommended: {comparison['recommendation']} method")
+                
+                # Show sample chunks from each method
+                print(f"\n📄 Sample chunks:")
+                
+                # Custom method sample
+                custom_docs = processor.pdf_to_documents(pdf_path)
+                if custom_docs:
+                    print(f"\nCustom method - First chunk:")
+                    print(f"Length: {len(custom_docs[0].page_content)} chars")
+                    print(f"Content: {custom_docs[0].page_content[:300]}...")
+                
+                # Recursive method sample  
+                recursive_docs = processor.pdf_to_documents_recursive(pdf_path)
+                if recursive_docs:
+                    print(f"\nRecursive method - First chunk:")
+                    print(f"Length: {len(recursive_docs[0].page_content)} chars")
+                    print(f"Content: {recursive_docs[0].page_content[:300]}...")
+                
+            except Exception as e:
+                print(f"Error testing {pdf_path.name}: {e}")
+    
+    if not pdf_found:
+        print("No test PDF files found. Place a PDF file (like thinkpython.pdf) in the current directory to test.")
+        print("Available methods:")
+        print("- pdf_to_documents(): Custom chunking with optimized parameters")
+        print("- pdf_to_documents_recursive(): RecursiveCharacterTextSplitter with LangChain integration")
 
 
 if __name__ == "__main__":

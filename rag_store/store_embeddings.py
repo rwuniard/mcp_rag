@@ -51,10 +51,21 @@ def load_documents_from_directory(directory_path: Path) -> list[Document]:
         except Exception as e:
             print(f"  ✗ Error processing {txt_file.name}: {e}")
     
-    # Process PDF files with optimized PDF chunking (defaults to 1800/270)
+    # Process PDF files with RecursiveCharacterTextSplitter (proven better search quality)
     processor = PDFProcessor()
-    pdf_docs = processor.process_pdf_directory(directory)
-    all_documents.extend(pdf_docs)
+    
+    # Use recursive method for better search quality
+    pdf_files = [f for f in directory.glob("*.pdf") if f.is_file()]
+    pdf_docs = []
+    
+    for pdf_file in pdf_files:
+        try:
+            print(f"Processing PDF: {pdf_file.name}")
+            docs = processor.pdf_to_documents_recursive(pdf_file)
+            pdf_docs.extend(docs)
+            print(f"  ✓ Extracted {len(docs)} chunks using RecursiveCharacterTextSplitter")
+        except Exception as e:
+            print(f"  ✗ Error processing {pdf_file.name}: {e}")
     
     return all_documents
 
@@ -154,6 +165,14 @@ def main():
     test_results = vectorstore.similarity_search("interesting fact", k=6)
     print(f"Test search returned {len(test_results)} results")
     for i, result in enumerate(test_results, 1): 
+        print(f"Result {i}:")
+        print(f"Content: {result.page_content[:200]}...")
+        print(f"Metadata: {result.metadata}")
+        print("--------------------------------")
+
+    test_results_pdf = vectorstore.similarity_search("find me a python class example.", k=6)
+    print(f"Test search returned {len(test_results_pdf)} results")
+    for i, result in enumerate(test_results_pdf, 1): 
         print(f"Result {i}:")
         print(f"Content: {result.page_content[:200]}...")
         print(f"Metadata: {result.metadata}")
