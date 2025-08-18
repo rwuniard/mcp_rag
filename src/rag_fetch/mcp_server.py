@@ -24,5 +24,9 @@ def search_documents(query: str, limit: int = 6) -> str:
     """
     return similarity_search_mcp_tool(query, ModelVendor.GOOGLE, limit=limit)
 
-if __name__ == "__main__":
+def main():
+    """Entry point for the MCP server."""
     mcp.run()
+
+if __name__ == "__main__":
+    main()

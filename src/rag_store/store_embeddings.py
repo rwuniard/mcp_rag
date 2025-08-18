@@ -9,12 +9,18 @@ from langchain_core.embeddings import Embeddings
 from enum import Enum
 from pathlib import Path
 import os
-from pdf_processor import PDFProcessor
+try:
+    from .pdf_processor import PDFProcessor
+except ImportError:
+    # Fallback for direct execution
+    from pdf_processor import PDFProcessor
 
-load_dotenv()
+# Load .env from the same directory as this script
+load_dotenv(Path(__file__).parent / ".env")
+print(f"Loaded .env from {Path(__file__).parent / '.env'}")
 
 # Configuration - use same structure as search_similarity.py
-PROJECT_ROOT = Path(__file__).parent.parent
+PROJECT_ROOT = Path(__file__).parent.parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
 
 class ModelVendor (Enum):
@@ -129,7 +135,7 @@ def main():
     print("Store embeddings to Chroma!")
     
     # Try to load from current directory first
-    current_dir = Path(".")
+    current_dir = Path("./data_source")
     all_documents = []
     
     # Load individual facts.txt if it exists

@@ -14,11 +14,16 @@ from langchain_chroma import Chroma
 from enum import Enum
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(Path(__file__).parent / ".env")
+print(f"Loaded .env from {Path(__file__).parent / '.env'}")
 
 # Configuration
-PROJECT_ROOT = Path(__file__).parent.parent
+PROJECT_ROOT = Path(__file__).parent.parent.parent
 DEFAULT_COLLECTION_NAME = "documents"
+
+# Configuration - use same structure as search_similarity.py
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+DATA_DIR = PROJECT_ROOT / "data"
 
 class ModelVendor(Enum):
     OPENAI = "openai"
@@ -27,13 +32,13 @@ class ModelVendor(Enum):
 def ensure_chroma_directory(model_vendor: ModelVendor) -> Path:
     """Ensure the Chroma database directory exists for the specified model vendor."""
     if model_vendor == ModelVendor.OPENAI:
-        db_path = PROJECT_ROOT / "data" / "chroma_db_openai"
+        db_path = DATA_DIR / "chroma_db_openai"
     elif model_vendor == ModelVendor.GOOGLE:
-        db_path = PROJECT_ROOT / "data" / "chroma_db_google"
+        db_path = DATA_DIR / "chroma_db_google"
     else:
         raise ValueError(f"Unsupported model vendor: {model_vendor}")
     
-    db_path.mkdir(parents=True, exist_ok=True)
+    # db_path.mkdir(parents=True, exist_ok=True)
     return db_path
 
 def load_embedding_model(model_vendor: ModelVendor):
@@ -59,6 +64,9 @@ def load_vectorstore(model_vendor: ModelVendor, collection_name: str = None):
     """Load the vectorstore from the persist directory based on the model vendor."""
     db_path = ensure_chroma_directory(model_vendor)
     print("DB path: ", db_path)
+    db_path_object = Path(db_path)
+    if not db_path_object.exists():
+        raise FileNotFoundError(f"Database directory not found: {db_path}")
     embedding_function = load_embedding_model(model_vendor)
     
     # Use default collection if none specified (same as storage)

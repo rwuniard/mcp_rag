@@ -2,4 +2,13 @@
 .venv/
 
 **/__pycache__/
-/data
+**/data/
+**/data_source/
+
+# Python packaging metadata
+*.egg-info/
+build/
+dist/
+
+# macOS
+.DS_Store

@@ -1,32 +1,59 @@
-# MCP RAG
+# MCP RAG - Microservices Architecture
 
-A RAG (Retrieval-Augmented Generation) system built with Python that will be wrapped with MCP (Model Context Protocol). The project uses ChromaDB for vector storage, LangChain for orchestration, and Google's Generative AI. The core goal is to expose RAG functionality through MCP server interfaces, allowing AI assistants to query and retrieve relevant information from document collections.
+A professional RAG (Retrieval-Augmented Generation) system built with Python and Model Context Protocol (MCP). This project implements a **microservices architecture** with independent document ingestion and search services for semantic document search using ChromaDB, LangChain, and Google's Generative AI.
+
+## 🏗️ Microservices Architecture
+
+### 📥 **RAG Store** - Document Ingestion Service
+Independent service for processing and storing documents:
+```bash
+# Store documents to vector database
+python main.py store
+rag-store-cli store
+```
+
+### 🔍 **RAG Fetch** - Search & Retrieval Service  
+Independent service for semantic search and MCP integration:
+```bash
+# Search documents via CLI
+python main.py search "machine learning concepts"
+rag-fetch-cli "interesting facts"
+
+# Start MCP server for AI assistants
+python main.py server
+rag-mcp-server
+```
+
+## 🚀 Three Ways to Use
 
 ## Quick Start
 
-1. **Setup Environment**:
+1. **Install & Setup**:
    ```bash
-   uv sync  # Install dependencies
-   cp .env.example .env  # Create environment file
+   # Install dependencies (fast with uv)
+   uv sync
+   
+   # Create environment file
+   cp .env.example .env
    # Add your GOOGLE_API_KEY to .env
    ```
 
 2. **Store Documents**:
    ```bash
-   cd rag_store
-   # Place your .txt and .pdf files in this directory
-   uv run python store_embeddings.py  # Store all documents to ChromaDB
+   # Place your .txt and .pdf files in src/rag_store/data_source/
+   python main.py store
    ```
 
-3. **Test Search**:
+3. **Search & Use**:
    ```bash
-   cd rag_fetch
-   uv run python search_similarity.py  # Test similarity search
-   ```
-
-4. **Start MCP Server**:
-   ```bash
-   uv run python mcp_server.py  # Start MCP server for AI assistants
+   # Command line search
+   python main.py search "interesting facts about English"
+   
+   # Start MCP server for AI assistants
+   python main.py server
+   
+   # Run comprehensive tests
+   uv run python -m unittest discover tests -v
    ```
 
 ## Development Commands
@@ -34,32 +61,62 @@ A RAG (Retrieval-Augmented Generation) system built with Python that will be wra
 **Package Management (uv)**:
 - `uv sync` - Install dependencies and sync environment
 - `uv add <package>` - Add new dependency
-- `uv run python main.py` - Run main application
-- `uv run python -m <module>` - Run specific module
+- `uv run python main.py` - Run CLI application
+- `uv run python mcp_server.py` - Start MCP server
 
 **RAG Operations**:
-- `cd rag_store && uv run python store_embeddings.py` - Store text and PDF documents to ChromaDB
-- `cd rag_fetch && uv run python search_similarity.py` - Test similarity search
-- `uv run python main.py "<query>"` - Search documents via CLI
-- `uv run python mcp_server.py` - Start MCP server for AI assistants
-- `cd rag_store && uv run python test_chunking_methods.py` - Compare chunking quality
+- `python main.py store` - Store text and PDF documents to ChromaDB (RAG Store service)
+- `python main.py search "<query>"` - Search documents via CLI (RAG Fetch service)
+- `python main.py server` - Start MCP server for AI assistants (RAG Fetch service)
+- `rag-store-cli store` - Direct access to ingestion service
+- `rag-fetch-cli "<query>"` - Direct access to search service
+- `rag-mcp-server` - Direct access to MCP server
+
+**Testing & Quality**:
+- `python -m unittest discover tests -v` - Run all unit tests
+- `python -m unittest tests.test_rag_store.test_pdf_processor -v` - Test RAG Store
+- `python -m unittest tests.test_rag_fetch.test_search_similarity -v` - Test RAG Fetch
 
 ## Architecture
 
-**Project Structure**:
-- `main.py` - Application entry point
-- `mcp_server.py` - MCP (Model Context Protocol) server for AI assistants
-- `data/` - Centralized database storage
-  - `chroma_db_google/` - Google embeddings database
-  - `chroma_db_openai/` - OpenAI embeddings database (if used)
-- `rag_fetch/` - Document retrieval and search functionality
-  - `search_similarity.py` - Semantic search with MCP-compatible responses
-- `rag_store/` - Document storage and embedding management
-  - `store_embeddings.py` - Store text and PDF documents to ChromaDB
-  - `pdf_processor.py` - PDF text extraction and processing
-  - `test_chunking_methods.py` - Quality comparison test for chunking methods
-  - `facts.txt` - Sample text document collection
-  - `*.pdf` - PDF documents for processing
+**Microservices Project Structure**:
+```
+mcp_rag/
+├── src/                      # Source packages (installable)
+│   ├── rag_store/           # 📥 Document Ingestion Service
+│   │   ├── README.md        # RAG Store documentation
+│   │   ├── .env             # Service environment variables
+│   │   ├── data_source/     # Input documents directory
+│   │   ├── pdf_processor.py # PDF text extraction and chunking
+│   │   ├── store_embeddings.py # Vector storage to ChromaDB
+│   │   └── cli.py           # rag-store-cli command
+│   └── rag_fetch/           # 🔍 Search & Retrieval Service
+│       ├── README.md        # RAG Fetch documentation
+│       ├── .env             # Service environment variables
+│       ├── search_similarity.py # Semantic search functionality
+│       ├── mcp_server.py    # MCP server (rag-mcp-server)
+│       └── cli.py           # rag-fetch-cli command
+├── tests/                    # Unit tests (microservice structure)
+│   ├── test_rag_store/      # RAG Store tests
+│   │   ├── test_pdf_processor.py
+│   │   └── test_store_embeddings.py
+│   └── test_rag_fetch/      # RAG Fetch tests
+│       └── test_search_similarity.py
+├── data/                     # Runtime databases (shared)
+│   ├── chroma_db_google/    # Google embeddings database
+│   └── chroma_db_openai/    # OpenAI embeddings database
+├── main.py                   # Convenience router (store|search|server)
+└── pyproject.toml           # Package configuration with entry points
+```
+
+**Microservices Entry Points**:
+
+| Service | CLI Command | Purpose | Usage |
+|---------|-------------|---------|-------|
+| **Router** | `python main.py` | Convenience router | `store\|search\|server` |
+| **RAG Store** | `rag-store-cli` | Document ingestion | `rag-store-cli store` |
+| **RAG Fetch** | `rag-fetch-cli` | Document search | `rag-fetch-cli "query"` |
+| **MCP Server** | `rag-mcp-server` | AI assistant integration | Background MCP service |
 
 **MCP Integration Design**:
 The RAG system exposes document search through a single MCP tool:
@@ -97,6 +154,9 @@ The RAG system exposes document search through a single MCP tool:
 - ✅ **Multi-Model Support**: Google and OpenAI embedding models
 - ✅ **Centralized Database**: Unified data storage in `data/` directory
 - ✅ **Production Ready**: Complete PDF-to-search pipeline verified and tested
+- ✅ **Professional Structure**: Modern Python package with src/tests organization
+- ✅ **Comprehensive Testing**: 11 unit tests with real PDF integration testing
+- ✅ **Dual Entry Points**: Both CLI and MCP server interfaces
 
 ### MCP Response Format
 ```json
@@ -158,7 +218,7 @@ Add this to your Claude Desktop configuration file:
       "command": "/usr/local/bin/uv",
       "args": [
         "--directory", "/Users/YOUR_USERNAME/Projects/python/mcp_rag",
-        "run", "python", "mcp_server.py"
+        "run", "python", "src/rag_fetch/mcp_server.py"
       ]
     }
   }
@@ -178,7 +238,7 @@ Add this to your Cursor MCP configuration:
       "command": "/usr/local/bin/uv",
       "args": [
         "--directory", "/absolute/path/to/mcp_rag",
-        "run", "python", "mcp_server.py"
+        "run", "python", "src/rag_fetch/mcp_server.py"
       ]
     }
   }
@@ -230,8 +290,25 @@ AI: [Uses search_documents tool] Here are some fascinating animal facts I found.
 
 ## Development Notes
 
-- Uses `uv` for fast dependency management instead of pip
-- ChromaDB collections: Default collection for storage, named collections for organization
-- Centralized database structure in `data/` folder for both storage and retrieval
-- MCP-ready: JSON responses designed for Model Context Protocol integration
-- Error handling: Graceful fallbacks and meaningful error messages
+### Package Structure
+- **Professional Python Package**: Follows src/tests best practices for Python development
+- **Installable Package**: Can be installed with `pip install -e .` for development
+- **Modern Tooling**: Uses `uv` for fast dependency management and `pytest` for testing
+- **Type Safety**: Configured for modern Python development with proper imports
+
+### Database & Storage
+- **ChromaDB**: Vector database with centralized structure in `data/` folder
+- **Multiple Models**: Support for both Google and OpenAI embeddings
+- **Document Types**: Handles both text (.txt) and PDF (.pdf) files with optimized processing
+
+### Testing & Quality
+- **Comprehensive Tests**: 11 unit tests covering all PDF processing functionality
+- **Integration Testing**: Real PDF processing with `thinkpython.pdf` (394 chunks)
+- **Multiple Runners**: Custom runner, pytest, and unittest support
+- **CI Ready**: Configured for automated testing and continuous integration
+
+### MCP Integration
+- **Dual Interfaces**: Both standalone CLI and MCP server functionality
+- **JSON Responses**: Structured responses designed for Model Context Protocol
+- **Error Handling**: Graceful fallbacks and meaningful error messages
+- **Production Ready**: Verified end-to-end pipeline from PDF to search results

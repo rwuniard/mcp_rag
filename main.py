@@ -1,41 +1,51 @@
 #!/usr/bin/env python3
 """
-MCP RAG - Main entry point
+Convenience script to run RAG services from the project root.
 
-This script provides a simple interface to the RAG functionality.
-For MCP server, use: python mcp_server.py
+This script provides a simple router for the different services.
+For production use, install the package and use specific CLI commands.
 """
 
 import sys
-from rag_fetch.search_similarity import similarity_search_mcp_tool, ModelVendor
+from pathlib import Path
+
+# Add src to path for development usage
+sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 
 def main():
-    print("🤖 MCP RAG - Retrieval Augmented Generation with MCP")
+    print("🤖 MCP RAG - Microservices Architecture")
     print("=" * 50)
     
     if len(sys.argv) > 1:
-        # Simple CLI interface
-        query = " ".join(sys.argv[1:])
-        print(f"Searching for: '{query}'")
-        print()
+        service = sys.argv[1]
         
-        try:
-            result = similarity_search_mcp_tool(query, ModelVendor.GOOGLE, limit=3)
-            print("Results:")
-            print(result)
-        except Exception as e:
-            print(f"Error: {e}")
-            print("\nMake sure you have:")
-            print("1. GOOGLE_API_KEY in your .env file")
-            print("2. Documents stored in ChromaDB (run: cd rag_store && python store_embeddings.py)")
+        if service == "store":
+            from rag_store.cli import main as store_main
+            store_main()
+        elif service == "search":
+            from rag_fetch.cli import main as fetch_main
+            fetch_main()
+        elif service == "server":
+            from rag_fetch.mcp_server import main as server_main
+            server_main()
+        else:
+            print(f"Unknown service: {service}")
+            show_usage()
     else:
-        print("Usage:")
-        print("  python main.py <search query>     # Search documents")
-        print("  python mcp_server.py              # Start MCP server")
-        print()
-        print("Example:")
-        print("  python main.py 'interesting facts about English'")
+        show_usage()
+
+
+def show_usage():
+    print("Usage:")
+    print("  python main.py store    # Run document ingestion service")
+    print("  python main.py search   # Run search CLI")
+    print("  python main.py server   # Start MCP server")
+    print()
+    print("Individual services:")
+    print("  python src/rag_store/cli.py store")
+    print("  python src/rag_fetch/cli.py <query>")
+    print("  python src/rag_fetch/mcp_server.py")
 
 
 if __name__ == "__main__":
