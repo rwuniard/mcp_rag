@@ -1,0 +1,267 @@
+name: Release
+
+on:
+  push:
+    branches: [ main ]
+  
+  # Allow manual releases
+  workflow_dispatch:
+    inputs:
+      version_bump:
+        description: 'Version bump type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+        - patch
+        - minor
+        - major
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  # Validate main branch state
+  validate:
+    name: Validate Main Branch
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        enable-cache: true
+
+    - name: Set up Python
+      run: uv python install ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: uv sync --dev
+
+    - name: Run quick validation tests
+      run: |
+        echo "🧪 Running validation tests on main..."
+        uv run python -m coverage run --source=src -m unittest discover tests -v
+        uv run python -m coverage report --fail-under=70
+        echo "✅ Main branch validation complete"
+
+  # Build and publish package
+  build-and-publish:
+    name: Build & Publish Package
+    runs-on: ubuntu-latest
+    needs: validate
+    if: github.ref == 'refs/heads/main'
+    
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history for version detection
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        enable-cache: true
+
+    - name: Set up Python
+      run: uv python install ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: uv sync --dev
+
+    - name: Determine version
+      id: version
+      run: |
+        # Get current version from pyproject.toml
+        CURRENT_VERSION=$(uv run python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+        echo "Current version: $CURRENT_VERSION"
+        
+        # For automatic releases, use patch bump
+        # For manual releases, use specified bump type
+        BUMP_TYPE="${{ github.event.inputs.version_bump || 'patch' }}"
+        
+        # Simple version bumping (you might want to use a more sophisticated tool like bump2version)
+        IFS='.' read -ra VERSION_PARTS <<< "$CURRENT_VERSION"
+        MAJOR=${VERSION_PARTS[0]}
+        MINOR=${VERSION_PARTS[1]}
+        PATCH=${VERSION_PARTS[2]}
+        
+        case $BUMP_TYPE in
+          major)
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+            ;;
+          minor)
+            MINOR=$((MINOR + 1))
+            PATCH=0
+            ;;
+          patch)
+            PATCH=$((PATCH + 1))
+            ;;
+        esac
+        
+        NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+        echo "New version: $NEW_VERSION"
+        echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+        
+        # Update pyproject.toml
+        sed -i "s/version = \"$CURRENT_VERSION\"/version = \"$NEW_VERSION\"/" pyproject.toml
+
+    - name: Build package
+      run: |
+        echo "📦 Building package..."
+        uv build
+        ls -la dist/
+
+    - name: Publish to TestPyPI
+      if: github.event_name == 'workflow_dispatch'
+      run: |
+        echo "📤 Publishing to TestPyPI..."
+        uv publish --token ${{ secrets.TEST_PYPI_API_TOKEN }} --publish-url https://test.pypi.org/legacy/
+      continue-on-error: true
+
+    - name: Publish to PyPI
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      run: |
+        echo "📤 Publishing to PyPI..."
+        # uv publish --token ${{ secrets.PYPI_API_TOKEN }}
+        echo "🚧 PyPI publishing disabled - uncomment when ready"
+      continue-on-error: true
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-dist-${{ steps.version.outputs.version }}
+        path: dist/
+        retention-days: 90
+
+  # Create GitHub release
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: build-and-publish
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: release-dist-${{ needs.build-and-publish.outputs.version }}
+        path: dist/
+
+    - name: Generate release notes
+      id: release_notes
+      run: |
+        echo "📝 Generating release notes..."
+        
+        # Get latest tag
+        LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+        
+        if [ -z "$LATEST_TAG" ]; then
+          echo "No previous tags found, generating initial release notes..."
+          RELEASE_NOTES="## 🎉 Initial Release
+
+This is the first release of the MCP RAG system.
+
+### Features
+- 📄 Document processing for PDF, DOCX, and text files  
+- 🔍 Semantic search and similarity matching
+- 🤖 Model Context Protocol (MCP) server integration
+- 🧪 Comprehensive test suite with coverage reporting
+- 🚀 CI/CD pipeline with trunk-based development
+
+### Components
+- **rag-store**: Document processing and storage
+- **rag-fetch**: Search and retrieval functionality  
+- **MCP Server**: Integration with Claude and other AI tools
+
+See README.md for installation and usage instructions."
+        else
+          echo "Generating release notes since $LATEST_TAG..."
+          RELEASE_NOTES="## 🚀 Release ${{ needs.build-and-publish.outputs.version }}
+
+### Changes since $LATEST_TAG
+
+$(git log $LATEST_TAG..HEAD --oneline --pretty=format:'- %s')
+
+### Statistics
+- Commits: $(git rev-list $LATEST_TAG..HEAD --count)
+- Files changed: $(git diff $LATEST_TAG..HEAD --name-only | wc -l)
+
+---
+Built from commit: \`${{ github.sha }}\`"
+        fi
+        
+        # Write to file for GitHub release
+        echo "$RELEASE_NOTES" > release-notes.md
+        
+        # Also output for next step
+        echo "RELEASE_NOTES<<EOF" >> $GITHUB_OUTPUT
+        echo "$RELEASE_NOTES" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+    - name: Create GitHub Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ needs.build-and-publish.outputs.version }}
+        release_name: Release v${{ needs.build-and-publish.outputs.version }}
+        body_path: release-notes.md
+        draft: false
+        prerelease: false
+
+    - name: Upload Release Assets
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: dist/
+        asset_name: mcp-rag-${{ needs.build-and-publish.outputs.version }}-dist.zip
+        asset_content_type: application/zip
+
+  # Post-release notifications and updates
+  post-release:
+    name: Post-Release Tasks
+    runs-on: ubuntu-latest
+    needs: [build-and-publish, create-release]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Update main branch with version bump
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        # The version was already updated in build step, commit it
+        git add pyproject.toml
+        git commit -m "🔖 Bump version to ${{ needs.build-and-publish.outputs.version }}" || echo "No changes to commit"
+        git push || echo "No changes to push"
+
+    - name: Release summary
+      run: |
+        echo "## 🎉 Release Complete!"
+        echo "Version: ${{ needs.build-and-publish.outputs.version }}"
+        echo "Tag: v${{ needs.build-and-publish.outputs.version }}"
+        echo "Build artifacts uploaded to GitHub release"
+        echo ""
+        echo "### Next Steps:"
+        echo "- 📖 Update documentation if needed"
+        echo "- 📢 Announce release to users"
+        echo "- 🏷️  Update any deployment configurations"
