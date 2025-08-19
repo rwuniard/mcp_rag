@@ -7,6 +7,7 @@ them into LangChain Document objects for embedding storage.
 
 from pathlib import Path
 from typing import List, Optional
+import time
 
 from langchain.schema import Document
 from langchain_community.document_loaders import PyPDFLoader
@@ -14,8 +15,22 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 try:
     from .document_processor import DocumentProcessor
+    from .logging_config import (
+        get_logger, 
+        log_document_processing_start,
+        log_document_processing_complete,
+        log_processing_error
+    )
 except ImportError:
     from document_processor import DocumentProcessor
+    from logging_config import (
+        get_logger, 
+        log_document_processing_start,
+        log_document_processing_complete,
+        log_processing_error
+    )
+
+logger = get_logger("pdf_processor")
 
 
 class PDFProcessor(DocumentProcessor):
@@ -67,16 +82,32 @@ class PDFProcessor(DocumentProcessor):
         
     def _process_pdf_internal(self, pdf_path: Path, chunk_size: Optional[int] = None, chunk_overlap: Optional[int] = None) -> List[Document]:
         """Internal PDF processing method."""
+        start_time = time.time()
         chunk_size, chunk_overlap = self.get_processing_params(chunk_size, chunk_overlap)
         
-        # Use PyPDFLoader for better LangChain integration
-        loader = PyPDFLoader(str(pdf_path))
+        # Log processing start
+        file_size = pdf_path.stat().st_size if pdf_path.exists() else 0
+        context = log_document_processing_start(
+            processor_name=self.processor_name,
+            file_path=str(pdf_path),
+            file_size=file_size,
+            file_type=pdf_path.suffix
+        )
         
         try:
+            # Use PyPDFLoader for better LangChain integration
+            loader = PyPDFLoader(str(pdf_path))
+            
             # Load PDF pages
             pages = loader.load()
             
             if not pages:
+                log_document_processing_complete(
+                    context=context,
+                    chunks_created=0,
+                    processing_time_seconds=time.time() - start_time,
+                    status="success_empty"
+                )
                 return []
             
             # Initialize the text splitter with optimized parameters
@@ -102,10 +133,25 @@ class PDFProcessor(DocumentProcessor):
                     "chunk_overlap": chunk_overlap,
                     "splitting_method": "RecursiveCharacterTextSplitter"
                 })
+            
+            # Log successful completion
+            processing_time = time.time() - start_time
+            log_document_processing_complete(
+                context=context,
+                chunks_created=len(documents),
+                processing_time_seconds=processing_time,
+                status="success"
+            )
                 
             return documents
             
         except Exception as e:
+            # Log error
+            log_processing_error(
+                context=context,
+                error=e,
+                error_type="pdf_processing_error"
+            )
             raise Exception(f"Error processing PDF {pdf_path}: {str(e)}")
     
     # Legacy method for backward compatibility

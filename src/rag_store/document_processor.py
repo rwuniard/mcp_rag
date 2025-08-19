@@ -8,8 +8,17 @@ extended to support various file types (PDF, TXT, DOCX, XLSX, etc.).
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import List, Set, Optional, Dict, Any
+import time
 
 from langchain.schema import Document
+
+try:
+    from .logging_config import get_logger, log_registry_operation
+except ImportError:
+    # Fallback for direct execution
+    from logging_config import get_logger, log_registry_operation
+
+logger = get_logger("document_processor")
 
 
 class DocumentProcessor(ABC):
@@ -157,6 +166,13 @@ class ProcessorRegistry:
         for extension in processor.supported_extensions:
             self._extension_map[extension.lower()] = processor_name
             
+        log_registry_operation(
+            "register_processor",
+            processor_name=processor_name,
+            supported_extensions=list(processor.supported_extensions),
+            total_processors=len(self._processors)
+        )
+            
     def get_processor_for_file(self, file_path: Path) -> Optional[DocumentProcessor]:
         """
         Get the appropriate processor for a file.
@@ -205,12 +221,37 @@ class ProcessorRegistry:
         Raises:
             ValueError: If no processor found for file type
         """
+        start_time = time.time()
         processor = self.get_processor_for_file(file_path)
         
         if not processor:
+            log_registry_operation(
+                "processor_lookup_failed",
+                file_path=str(file_path),
+                file_extension=file_path.suffix,
+                supported_extensions=list(self.get_supported_extensions())
+            )
             raise ValueError(
                 f"No processor found for file type: {file_path.suffix}. "
                 f"Supported extensions: {self.get_supported_extensions()}"
             )
+        
+        log_registry_operation(
+            "processor_lookup_success",
+            file_path=str(file_path),
+            processor_name=processor.__class__.__name__,
+            file_extension=file_path.suffix
+        )
+        
+        documents = processor.process_document(file_path, chunk_size, chunk_overlap, **kwargs)
+        
+        processing_time = time.time() - start_time
+        log_registry_operation(
+            "document_processed",
+            file_path=str(file_path),
+            processor_name=processor.__class__.__name__,
+            chunks_created=len(documents),
+            processing_time_seconds=processing_time
+        )
             
-        return processor.process_document(file_path, chunk_size, chunk_overlap, **kwargs)
+        return documents

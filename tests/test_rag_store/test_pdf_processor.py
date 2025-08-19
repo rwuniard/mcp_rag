@@ -192,7 +192,8 @@ class TestPDFProcessor(unittest.TestCase):
         with self.assertRaises(Exception) as context:
             self.processor.pdf_to_documents_recursive(pdf_path)
         
-        self.assertEqual(str(context.exception), "PDF loading failed")
+        self.assertIn("Error processing PDF", str(context.exception))
+        self.assertIn("PDF loading failed", str(context.exception))
     
     def test_pdf_to_documents_recursive_nonexistent_file(self):
         """Test pdf_to_documents_recursive with non-existent file."""

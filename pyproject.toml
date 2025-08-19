@@ -26,6 +26,8 @@ dependencies = [
     "langchain-openai>=0.3.30",
     "python-dotenv>=1.1.1",
     "pypdf>=5.1.0",
+    "structlog>=25.4.0",
+    "prometheus-client>=0.22.1",
 ]
 
 [project.optional-dependencies]
@@ -82,3 +84,8 @@ extend-exclude = '''
 profile = "black"
 multi_line_output = 3
 line_length = 88
+
+[dependency-groups]
+dev = [
+    "coverage>=7.10.4",
+]

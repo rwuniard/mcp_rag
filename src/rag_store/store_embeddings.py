@@ -11,15 +11,20 @@ try:
     from .document_processor import ProcessorRegistry
     from .pdf_processor import PDFProcessor
     from .text_processor import TextProcessor
+    from .logging_config import get_logger
 except ImportError:
     # Fallback for direct execution
     from document_processor import ProcessorRegistry
     from pdf_processor import PDFProcessor
     from text_processor import TextProcessor
+    from logging_config import get_logger
 
 # Load .env from the same directory as this script
 load_dotenv(Path(__file__).parent / ".env")
-print(f"Loaded .env from {Path(__file__).parent / '.env'}")
+
+# Initialize logger
+logger = get_logger("store_embeddings")
+logger.info("Environment configuration loaded", env_path=str(Path(__file__).parent / ".env"))
 
 # Configuration - use same structure as search_similarity.py
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -69,18 +74,40 @@ def process_documents_from_directory(directory_path: Path) -> list[Document]:
             try:
                 processor = registry.get_processor_for_file(file_path)
                 if processor:
-                    print(f"Processing {processor.file_type_description}: {file_path.name}")
+                    logger.info(
+                        "Processing document", 
+                        file_type=processor.file_type_description,
+                        file_name=file_path.name,
+                        processor_name=processor.processor_name
+                    )
                     docs = registry.process_document(file_path)
                     all_documents.extend(docs)
-                    print(f"  ✓ Extracted {len(docs)} chunks using {processor.processor_name}")
+                    logger.info(
+                        "Document processed successfully",
+                        file_name=file_path.name,
+                        chunks_extracted=len(docs),
+                        processor_name=processor.processor_name
+                    )
                 else:
-                    print(f"  ⚠ No processor found for {file_path.name}")
+                    logger.warning(
+                        "No processor found for file",
+                        file_name=file_path.name,
+                        file_extension=file_path.suffix
+                    )
             except Exception as e:
-                print(f"  ✗ Error processing {file_path.name}: {e}")
+                logger.error(
+                    "Error processing document",
+                    file_name=file_path.name,
+                    error=str(e),
+                    error_type=type(e).__name__
+                )
     
     if not all_documents:
-        print(f"No supported documents found in {directory_path}")
-        print(f"Supported extensions: {sorted(supported_extensions)}")
+        logger.warning(
+            "No supported documents found",
+            directory_path=str(directory_path),
+            supported_extensions=sorted(supported_extensions)
+        )
     
     return all_documents
 
@@ -97,12 +124,21 @@ def process_text_files(directory_path: Path) -> list[Document]:
     
     for txt_file in directory_path.glob("*.txt"):
         try:
-            print(f"Processing text file: {txt_file.name}")
+            logger.info("Processing legacy text file", file_name=txt_file.name)
             docs = registry.process_document(txt_file)
             documents.extend(docs)
-            print(f"  ✓ Loaded {len(docs)} chunks from {txt_file.name}")
+            logger.info(
+                "Legacy text file processed",
+                file_name=txt_file.name,
+                chunks_loaded=len(docs)
+            )
         except Exception as e:
-            print(f"  ✗ Error processing {txt_file.name}: {e}")
+            logger.error(
+                "Error processing legacy text file",
+                file_name=txt_file.name,
+                error=str(e),
+                error_type=type(e).__name__
+            )
     return documents
 
 def process_pdf_files(directory_path: Path) -> list[Document]:
@@ -112,12 +148,22 @@ def process_pdf_files(directory_path: Path) -> list[Document]:
     
     for pdf_file in directory_path.glob("*.pdf"):
         try:
-            print(f"Processing PDF: {pdf_file.name}")
+            logger.info("Processing legacy PDF file", file_name=pdf_file.name)
             docs = registry.process_document(pdf_file)
             documents.extend(docs)
-            print(f"  ✓ Extracted {len(docs)} chunks using RecursiveCharacterTextSplitter")
+            logger.info(
+                "Legacy PDF file processed",
+                file_name=pdf_file.name,
+                chunks_extracted=len(docs),
+                splitting_method="RecursiveCharacterTextSplitter"
+            )
         except Exception as e:
-            print(f"  ✗ Error processing {pdf_file.name}: {e}")
+            logger.error(
+                "Error processing legacy PDF file",
+                file_name=pdf_file.name,
+                error=str(e),
+                error_type=type(e).__name__
+            )
     return documents
 
 def load_documents_from_directory(directory_path: Path) -> list[Document]:
@@ -177,12 +223,17 @@ def store_to_chroma(documents: list[Document], model_vendor: ModelVendor) -> Chr
         persist_directory=str(db_path)
     )
     
-    print(f"Stored {len(documents)} documents to {db_path}")
+    logger.info(
+        "Documents stored to ChromaDB",
+        documents_count=len(documents),
+        database_path=str(db_path),
+        model_vendor=model_vendor.value
+    )
     return vectorstore
 
 def main():
     """Store documents (text and PDF) to ChromaDB using Google embeddings."""
-    print("Store embeddings to Chroma!")
+    logger.info("Starting document embedding storage process")
     
     # Use the new unified document processing
     data_source_dir = Path("./data_source")
@@ -191,41 +242,69 @@ def main():
         all_documents = process_documents_from_directory(data_source_dir)
         
         if not all_documents:
-            print("No documents found. Please ensure you have supported files in the data_source directory.")
-            print("Supported formats:")
             registry = get_document_processor_registry()
-            for processor_name, processor in registry.get_all_processors().items():
-                print(f"  - {processor.file_type_description}")
+            supported_formats = [processor.file_type_description for processor in registry.get_all_processors().values()]
+            logger.warning(
+                "No documents found in data source directory",
+                data_source_dir=str(data_source_dir),
+                supported_formats=supported_formats
+            )
             return
         
-        print(f"Total documents to store: {len(all_documents)}")
+        logger.info(
+            "Documents loaded successfully",
+            total_documents=len(all_documents),
+            data_source_dir=str(data_source_dir)
+        )
     except Exception as e:
-        print(f"Error loading documents: {e}")
+        logger.error(
+            "Error loading documents",
+            error=str(e),
+            error_type=type(e).__name__,
+            data_source_dir=str(data_source_dir)
+        )
         return
 
     # Store documents using Google embeddings
     vectorstore = store_to_chroma(all_documents, ModelVendor.GOOGLE)
-    print(f"Successfully stored documents. Database location: {DATA_DIR / 'chroma_db_google'}")
+    logger.info(
+        "Document storage completed successfully",
+        database_location=str(DATA_DIR / "chroma_db_google"),
+        model_vendor="google",
+        total_documents=len(all_documents)
+    )
     
     # Test the storage by doing a quick search
     test_results = vectorstore.similarity_search("interesting fact", k=6)
-    print(f"Test search returned {len(test_results)} results")
+    logger.info(
+        "Test search completed",
+        query="interesting fact",
+        results_count=len(test_results),
+        k=6
+    )
     for i, result in enumerate(test_results, 1): 
-        print(f"Result {i}:")
-        print(f"Content: {result.page_content[:200]}...")
-        print(f"Metadata: {result.metadata}")
-        print("--------------------------------")
+        logger.info(
+            "Test search result",
+            result_number=i,
+            content_preview=result.page_content[:200],
+            metadata=result.metadata
+        )
 
     query = "Find me a python class example."
-    print(f"Query: {query}")
-    print("--------------------------------")
     test_results_pdf = vectorstore.similarity_search(query, k=3)
-    print(f"Test search returned {len(test_results_pdf)} results")
+    logger.info(
+        "PDF test search completed",
+        query=query,
+        results_count=len(test_results_pdf),
+        k=3
+    )
     for i, result_pdf in enumerate(test_results_pdf, 1): 
-        print(f"Result {i}:")
-        print(f"Content: {result_pdf.page_content[:200]}...")
-        print(f"Metadata: {result_pdf.metadata}")
-        print("--------------------------------")
+        logger.info(
+            "PDF test search result",
+            result_number=i,
+            content_preview=result_pdf.page_content[:200],
+            metadata=result_pdf.metadata
+        )
 
 
 

@@ -66,9 +66,90 @@ src/rag_store/
 ├── document_processor.py   # Universal document processor interface
 ├── pdf_processor.py        # PDF processing and chunking
 ├── text_processor.py       # Text and markdown processing
+├── logging_config.py       # Structured logging configuration
 ├── store_embeddings.py     # Main ingestion script
 └── cli.py                 # Command-line interface
 ```
+
+## 📊 Structured Logging
+
+RAG Store features comprehensive structured logging with JSON output and Prometheus metrics for observability:
+
+### **Logging Features**
+- **Structured JSON logging** with `structlog` for machine-readable logs
+- **Prometheus metrics** for document processing metrics
+- **Performance tracking** with processing times and file sizes
+- **Error tracking** with detailed error context
+- **Registry operations** logging for processor management
+
+### **Log Examples**
+
+**Document Processing Start:**
+```json
+{
+  "processor_name": "PDFProcessor",
+  "file_path": "/path/to/document.pdf", 
+  "file_size": 834685,
+  "file_type": ".pdf",
+  "operation": "document_processing",
+  "event": "Document processing started",
+  "logger": "rag_store",
+  "level": "info",
+  "timestamp": "2025-08-19T02:44:16.642198Z"
+}
+```
+
+**Document Processing Complete:**
+```json
+{
+  "chunks_created": 394,
+  "processing_time_seconds": 1.19,
+  "status": "success",
+  "processor_name": "PDFProcessor",
+  "file_path": "/path/to/document.pdf",
+  "file_size": 834685,
+  "file_type": ".pdf",
+  "operation": "document_processing", 
+  "event": "Document processing completed",
+  "logger": "rag_store",
+  "level": "info",
+  "timestamp": "2025-08-19T02:44:17.830945Z"
+}
+```
+
+**Error Handling:**
+```json
+{
+  "error": "PDF loading failed",
+  "error_type": "pdf_processing_error",
+  "processor_name": "PDFProcessor",
+  "file_path": "/path/to/error.pdf",
+  "operation": "document_processing",
+  "event": "Document processing failed",
+  "logger": "rag_store", 
+  "level": "error",
+  "timestamp": "2025-08-19T02:44:28.853742Z"
+}
+```
+
+### **Prometheus Metrics**
+
+The logging system includes built-in Prometheus metrics:
+
+- `rag_documents_processed_total` - Counter of processed documents by processor and status
+- `rag_chunks_created_total` - Counter of chunks created by processor type
+- `rag_processing_errors_total` - Counter of processing errors by type
+- `rag_document_processing_duration_seconds` - Histogram of processing times
+- `rag_document_size_bytes` - Histogram of document sizes
+- `rag_active_processors` - Gauge of active processor instances
+
+### **Integration Ready**
+
+The structured logging is designed for:
+- **LangSmith**: JSON logs can be ingested for LLM observability
+- **Prometheus + Grafana**: Built-in metrics for monitoring dashboards
+- **ELK Stack**: Structured JSON for log aggregation
+- **Cloud Logging**: AWS CloudWatch, Google Cloud Logging, etc.
 
 ## 🔧 Components
 
@@ -89,6 +170,11 @@ src/rag_store/
 - **Technology**: TextLoader + CharacterTextSplitter
 - **Parameters**: 300 chars with 50 overlap (optimized for text content)
 - **Features**: Multiple encoding support, markdown processing, chunk metadata
+
+### **Logging Configuration** (`logging_config.py`)
+- **Purpose**: Centralized logging configuration with structured JSON output
+- **Features**: Prometheus metrics integration, configurable log levels, context tracking
+- **Integration**: Ready for LangSmith, Grafana, ELK stack, and cloud logging services
 
 ### **Store Embeddings** (`store_embeddings.py`)
 - **Purpose**: Convert documents to vectors and store in ChromaDB using unified interface
@@ -210,6 +296,23 @@ registry = get_document_processor_registry()
 documents = registry.process_document(Path("document.pdf"))
 ```
 
+### **Logging Usage**
+```python
+# Get structured logger
+from rag_store.logging_config import get_logger
+logger = get_logger("my_module")
+
+# Log with structured data
+logger.info("Processing started", file_path="document.pdf", size=1024)
+
+# Access Prometheus metrics
+from rag_store.logging_config import get_metrics_registry
+metrics = get_metrics_registry()
+
+# View metrics in console (development)
+python -c "from prometheus_client import generate_latest; print(generate_latest().decode())"
+```
+
 ## 🏗️ Architecture Integration
 
 RAG Store is designed as an **independent microservice**:
@@ -263,6 +366,10 @@ langchain-community = ">=0.3.27"
 langchain-google-genai = ">=2.0.10"
 pypdf = ">=5.1.0"
 python-dotenv = ">=1.1.1"
+
+# Logging and observability
+structlog = ">=24.1.0"
+prometheus-client = ">=0.21.0"
 ```
 
 ## 🔗 Related Services

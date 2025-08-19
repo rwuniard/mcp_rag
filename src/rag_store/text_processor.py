@@ -7,6 +7,7 @@ them into LangChain Document objects for embedding storage.
 
 from pathlib import Path
 from typing import List, Optional
+import time
 
 from langchain.schema import Document
 from langchain_community.document_loaders import TextLoader
@@ -14,8 +15,22 @@ from langchain.text_splitter import CharacterTextSplitter
 
 try:
     from .document_processor import DocumentProcessor
+    from .logging_config import (
+        get_logger, 
+        log_document_processing_start,
+        log_document_processing_complete,
+        log_processing_error
+    )
 except ImportError:
     from document_processor import DocumentProcessor
+    from logging_config import (
+        get_logger, 
+        log_document_processing_start,
+        log_document_processing_complete,
+        log_processing_error
+    )
+
+logger = get_logger("text_processor")
 
 
 class TextProcessor(DocumentProcessor):
@@ -69,7 +84,17 @@ class TextProcessor(DocumentProcessor):
         separator: str = "\n\n"
     ) -> List[Document]:
         """Internal text processing method."""
+        start_time = time.time()
         chunk_size, chunk_overlap = self.get_processing_params(chunk_size, chunk_overlap)
+        
+        # Log processing start
+        file_size = file_path.stat().st_size if file_path.exists() else 0
+        context = log_document_processing_start(
+            processor_name=self.processor_name,
+            file_path=str(file_path),
+            file_size=file_size,
+            file_type=file_path.suffix
+        )
         
         try:
             # Use TextLoader for basic text loading
@@ -87,7 +112,12 @@ class TextProcessor(DocumentProcessor):
             documents = loader.load_and_split(text_splitter)
             
             if not documents:
-                # If no documents, create empty list
+                log_document_processing_complete(
+                    context=context,
+                    chunks_created=0,
+                    processing_time_seconds=time.time() - start_time,
+                    status="success_empty"
+                )
                 return []
             
             # Enhance metadata with processing information
@@ -104,6 +134,15 @@ class TextProcessor(DocumentProcessor):
                     "splitting_method": "CharacterTextSplitter",
                     "total_chunks": len(documents)
                 })
+            
+            # Log successful completion
+            processing_time = time.time() - start_time
+            log_document_processing_complete(
+                context=context,
+                chunks_created=len(documents),
+                processing_time_seconds=processing_time,
+                status="success"
+            )
                 
             return documents
             
