@@ -11,12 +11,14 @@ try:
     from .document_processor import ProcessorRegistry
     from .pdf_processor import PDFProcessor
     from .text_processor import TextProcessor
+    from .word_processor import WordProcessor
     from .logging_config import get_logger
 except ImportError:
     # Fallback for direct execution
     from document_processor import ProcessorRegistry
     from pdf_processor import PDFProcessor
     from text_processor import TextProcessor
+    from word_processor import WordProcessor
     from logging_config import get_logger
 
 # Load .env from the same directory as this script
@@ -39,13 +41,14 @@ def get_document_processor_registry() -> ProcessorRegistry:
     Initialize and return a document processor registry with all supported processors.
     
     Returns:
-        ProcessorRegistry configured with PDF and Text processors
+        ProcessorRegistry configured with PDF, Text, and Word processors
     """
     registry = ProcessorRegistry()
     
     # Register all available processors
     registry.register_processor(PDFProcessor())
     registry.register_processor(TextProcessor())
+    registry.register_processor(WordProcessor())
     
     return registry
 
@@ -176,8 +179,6 @@ def ensure_data_directory(model_vendor: ModelVendor) -> Path:
         db_path = DATA_DIR / "chroma_db_openai"
     elif model_vendor == ModelVendor.GOOGLE:
         db_path = DATA_DIR / "chroma_db_google"
-    else:
-        raise ValueError(f"Unsupported model vendor: {model_vendor}")
     
     db_path.mkdir(parents=True, exist_ok=True)
     return db_path
@@ -197,8 +198,6 @@ def load_embedding_model(model_vendor: ModelVendor):
             model="models/text-embedding-004",
             google_api_key=api_key
         )
-    else:
-        raise ValueError(f"Unsupported model vendor: {model_vendor}")
 
 def get_text_splitter():
     """Get optimized text splitter for mixed factual content."""

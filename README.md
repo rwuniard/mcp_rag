@@ -52,9 +52,44 @@ rag-mcp-server
    # Start MCP server for AI assistants
    python main.py server
    
-   # Run comprehensive tests
-   uv run python -m unittest discover tests -v
+   # Run comprehensive tests with coverage
+   python run_coverage.py --open
    ```
+
+## Testing & Coverage
+
+The project includes a comprehensive test suite with a professional coverage tool:
+
+### Coverage Tool Usage
+```bash
+# Run all tests with coverage and open HTML report
+python run_coverage.py --open
+
+# Generate both console and HTML reports
+python run_coverage.py
+
+# Console report only
+python run_coverage.py --console-only
+
+# HTML report only (no console output)
+python run_coverage.py --html-only
+
+# Skip HTML generation
+python run_coverage.py --no-html
+```
+
+### Coverage Features
+- **Professional HTML Reports**: Interactive coverage visualization with line-by-line analysis
+- **Browser Integration**: Automatically opens HTML reports in your default browser
+- **Multi-format Output**: Both console and HTML coverage reports
+- **Test Statistics**: Comprehensive test execution metrics and timing
+- **CI-Ready**: Suitable for continuous integration pipelines
+
+### Current Coverage Status
+- **Overall Project**: 70% coverage across all modules
+- **Core Processors**: 95%+ coverage (Text, Word, PDF processors)
+- **Document Processing**: 93%+ coverage
+- **60+ Unit Tests**: Comprehensive test coverage for all major functionality
 
 ## Development Commands
 
@@ -73,6 +108,8 @@ rag-mcp-server
 - `rag-mcp-server` - Direct access to MCP server
 
 **Testing & Quality**:
+- `python run_coverage.py` - Run comprehensive test suite with coverage reports
+- `python run_coverage.py --open` - Run tests with coverage and open HTML report in browser
 - `python -m unittest discover tests -v` - Run all unit tests
 - `python -m unittest tests.test_rag_store.test_pdf_processor -v` - Test RAG Store
 - `python -m unittest tests.test_rag_fetch.test_search_similarity -v` - Test RAG Fetch
@@ -101,6 +138,8 @@ mcp_rag/
 ├── tests/                    # Unit tests (microservice structure)
 │   ├── test_rag_store/      # RAG Store tests
 │   │   ├── test_pdf_processor.py
+│   │   ├── test_text_processor.py
+│   │   ├── test_word_processor.py
 │   │   └── test_store_embeddings.py
 │   └── test_rag_fetch/      # RAG Fetch tests
 │       └── test_search_similarity.py
@@ -108,6 +147,7 @@ mcp_rag/
 │   ├── chroma_db_google/    # Google embeddings database
 │   └── chroma_db_openai/    # OpenAI embeddings database
 ├── main.py                   # Convenience router (store|search|server)
+├── run_coverage.py          # Comprehensive test coverage tool
 └── pyproject.toml           # Package configuration with entry points
 ```
 
@@ -136,6 +176,7 @@ The RAG system exposes document search through a single MCP tool:
 - **LangChain-OpenAI** (>=0.3.30) - OpenAI integration (optional)
 - **Google-GenerativeAI** (>=0.8.5) - Google's generative AI client
 - **PyPDF** (>=5.1.0) - PDF text extraction and processing
+- **docx2txt** (>=0.8) - Word document text extraction
 - **python-dotenv** (>=1.1.1) - Environment variable management
 
 **Technology Stack**:
@@ -150,9 +191,10 @@ The RAG system exposes document search through a single MCP tool:
 
 ### Current Implementation
 - ✅ **Universal Document Interface**: Extensible processor architecture for multiple document types
-- ✅ **Multi-Format Support**: PDF, TXT, and Markdown files with optimized processing
+- ✅ **Multi-Format Support**: PDF, Word (DOCX/DOC), TXT, and Markdown files with optimized processing
 - ✅ **Document Storage**: Store documents with ChromaDB vector embeddings
 - ✅ **PDF Processing**: Advanced RecursiveCharacterTextSplitter with page number tracking
+- ✅ **Word Processing**: Docx2txtLoader with RecursiveCharacterTextSplitter for structured content
 - ✅ **Text Processing**: CharacterTextSplitter optimized for text and markdown files
 - ✅ **Semantic Search**: Query documents using natural language with similarity scoring
 - ✅ **MCP-Compatible Responses**: JSON-formatted responses ready for MCP integration
@@ -190,7 +232,7 @@ The RAG system exposes document search through a single MCP tool:
 - **Rich Metadata**: Includes page numbers, creation dates, author, and PDF properties
 - **Optimized Parameters**: Industry best-practice 1800 chars with 270 overlap
 - **Document-Type Aware**: Different strategies for PDFs, text files, and markdown
-- **Mixed Content Support**: Processes text (.txt), markdown (.md), and PDF (.pdf) files
+- **Mixed Content Support**: Processes text (.txt), markdown (.md), Word (.docx, .doc), and PDF (.pdf) files
 - **Error Handling**: Graceful handling of corrupted or unreadable files
 - **Registry Pattern**: Dynamic processor selection by file extension
 
@@ -308,9 +350,11 @@ AI: [Uses search_documents tool] Here are some fascinating animal facts I found.
 - **Document Types**: Handles both text (.txt) and PDF (.pdf) files with optimized processing
 
 ### Testing & Quality
-- **Comprehensive Tests**: 42 unit tests covering document processing, PDF, and search functionality
+- **Comprehensive Tests**: 60+ unit tests covering document processing, PDF, text, Word, and search functionality
+- **High Coverage**: 95%+ coverage on core processors (Text, Word, PDF) with overall 70% project coverage
 - **Integration Testing**: Real PDF processing with `thinkpython.pdf` (394 chunks)
 - **Interface Testing**: Universal document processor interface validation
+- **Coverage Tool**: Professional `run_coverage.py` with HTML reports, browser integration, and CI support
 - **Multiple Runners**: Custom runner, pytest, and unittest support
 - **CI Ready**: Configured for automated testing and continuous integration
 

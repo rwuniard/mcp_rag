@@ -30,6 +30,7 @@ Place your documents in the `data_source/` directory:
 ```
 src/rag_store/data_source/
 ├── your_document.pdf
+├── report.docx
 ├── facts.txt
 ├── documentation.md
 └── other_files.pdf
@@ -37,6 +38,7 @@ src/rag_store/data_source/
 
 Supported formats:
 - **PDF files** (`.pdf`) - Processed with PyPDFLoader + RecursiveCharacterTextSplitter
+- **Word documents** (`.docx`, `.doc`) - Processed with Docx2txtLoader + RecursiveCharacterTextSplitter
 - **Text files** (`.txt`) - Processed with CharacterTextSplitter
 - **Markdown files** (`.md`) - Processed with CharacterTextSplitter
 
@@ -61,10 +63,12 @@ src/rag_store/
 ├── .env                     # Environment variables
 ├── data_source/            # Input documents directory
 │   ├── *.pdf              # PDF documents
+│   ├── *.docx             # Word documents
 │   ├── *.txt              # Text documents
 │   └── *.md               # Markdown documents
 ├── document_processor.py   # Universal document processor interface
 ├── pdf_processor.py        # PDF processing and chunking
+├── word_processor.py       # Word document processing and chunking
 ├── text_processor.py       # Text and markdown processing
 ├── logging_config.py       # Structured logging configuration
 ├── store_embeddings.py     # Main ingestion script
@@ -165,6 +169,12 @@ The structured logging is designed for:
 - **Parameters**: 1800 chars with 270 overlap (industry best practices)
 - **Features**: Page number tracking, metadata extraction, error handling
 
+### **Word Processor** (`word_processor.py`)
+- **Purpose**: Extract and chunk text from Microsoft Word documents
+- **Technology**: Docx2txtLoader + RecursiveCharacterTextSplitter
+- **Parameters**: 1000 chars with 150 overlap (balanced for Word content)
+- **Features**: Structured text extraction, metadata enhancement, error handling
+
 ### **Text Processor** (`text_processor.py`)
 - **Purpose**: Extract and chunk text from text and markdown files
 - **Technology**: TextLoader + CharacterTextSplitter
@@ -195,6 +205,14 @@ The structured logging is designed for:
 - **Chunk Size**: 1800 characters
 - **Overlap**: 270 characters
 - **Metadata**: Page numbers, document properties, chunk IDs
+
+### **Word Processing**
+- **Loader**: Docx2txtLoader (LangChain Community)
+- **Splitter**: RecursiveCharacterTextSplitter
+- **Chunk Size**: 1000 characters
+- **Overlap**: 150 characters
+- **Separators**: Paragraphs, lines, words, characters
+- **Supported**: `.docx`, `.doc` files
 
 ### **Text Processing** 
 - **Loader**: TextLoader (LangChain)
@@ -360,6 +378,7 @@ python -m unittest tests.test_rag_store -v
 ```toml
 # Core dependencies
 chromadb = ">=1.0.17"
+docx2txt = ">=0.8"
 langchain = ">=0.3.27"
 langchain-chroma = ">=0.2.5"
 langchain-community = ">=0.3.27"

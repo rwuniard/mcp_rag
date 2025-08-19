@@ -17,6 +17,7 @@ classifiers = [
 ]
 dependencies = [
     "chromadb>=1.0.17",
+    "docx2txt>=0.8",
     "fastmcp>=2.11.3",
     "google-generativeai>=0.8.5",
     "langchain>=0.3.27",
