@@ -5,9 +5,9 @@ A professional RAG (Retrieval-Augmented Generation) system built with Python and
 ## 🏗️ Microservices Architecture
 
 ### 📥 **RAG Store** - Document Ingestion Service
-Independent service for processing and storing documents:
+Independent service with **universal document processor interface** for processing and storing documents:
 ```bash
-# Store documents to vector database
+# Store documents to vector database (supports PDF, TXT, MD)
 python main.py store
 rag-store-cli store
 ```
@@ -40,7 +40,7 @@ rag-mcp-server
 
 2. **Store Documents**:
    ```bash
-   # Place your .txt and .pdf files in src/rag_store/data_source/
+   # Place your .txt, .md, and .pdf files in src/rag_store/data_source/
    python main.py store
    ```
 
@@ -87,7 +87,9 @@ mcp_rag/
 │   │   ├── README.md        # RAG Store documentation
 │   │   ├── .env             # Service environment variables
 │   │   ├── data_source/     # Input documents directory
+│   │   ├── document_processor.py # Universal document processor interface
 │   │   ├── pdf_processor.py # PDF text extraction and chunking
+│   │   ├── text_processor.py # Text and Markdown processing
 │   │   ├── store_embeddings.py # Vector storage to ChromaDB
 │   │   └── cli.py           # rag-store-cli command
 │   └── rag_fetch/           # 🔍 Search & Retrieval Service
@@ -147,15 +149,18 @@ The RAG system exposes document search through a single MCP tool:
 ## Features
 
 ### Current Implementation
-- ✅ **Document Storage**: Store text and PDF documents with ChromaDB vector embeddings
+- ✅ **Universal Document Interface**: Extensible processor architecture for multiple document types
+- ✅ **Multi-Format Support**: PDF, TXT, and Markdown files with optimized processing
+- ✅ **Document Storage**: Store documents with ChromaDB vector embeddings
 - ✅ **PDF Processing**: Advanced RecursiveCharacterTextSplitter with page number tracking
+- ✅ **Text Processing**: CharacterTextSplitter optimized for text and markdown files
 - ✅ **Semantic Search**: Query documents using natural language with similarity scoring
 - ✅ **MCP-Compatible Responses**: JSON-formatted responses ready for MCP integration
 - ✅ **Multi-Model Support**: Google and OpenAI embedding models
 - ✅ **Centralized Database**: Unified data storage in `data/` directory
-- ✅ **Production Ready**: Complete PDF-to-search pipeline verified and tested
+- ✅ **Production Ready**: Complete document-to-search pipeline verified and tested
 - ✅ **Professional Structure**: Modern Python package with src/tests organization
-- ✅ **Comprehensive Testing**: 11 unit tests with real PDF integration testing
+- ✅ **Comprehensive Testing**: 42 unit tests with real PDF integration testing
 - ✅ **Dual Entry Points**: Both CLI and MCP server interfaces
 
 ### MCP Response Format
@@ -184,9 +189,10 @@ The RAG system exposes document search through a single MCP tool:
 - **Proven Search Quality**: 5/5 queries show better relevance vs custom chunking
 - **Rich Metadata**: Includes page numbers, creation dates, author, and PDF properties
 - **Optimized Parameters**: Industry best-practice 1800 chars with 270 overlap
-- **Document-Type Aware**: Different strategies for PDFs vs text files
-- **Mixed Content Support**: Processes both text (.txt) and PDF (.pdf) files
-- **Error Handling**: Graceful handling of corrupted or unreadable PDF files
+- **Document-Type Aware**: Different strategies for PDFs, text files, and markdown
+- **Mixed Content Support**: Processes text (.txt), markdown (.md), and PDF (.pdf) files
+- **Error Handling**: Graceful handling of corrupted or unreadable files
+- **Registry Pattern**: Dynamic processor selection by file extension
 
 ### Chunking Technology (Evidence-Based)
 - **PDF Method**: RecursiveCharacterTextSplitter with optimized 1800/270 parameters
@@ -302,8 +308,9 @@ AI: [Uses search_documents tool] Here are some fascinating animal facts I found.
 - **Document Types**: Handles both text (.txt) and PDF (.pdf) files with optimized processing
 
 ### Testing & Quality
-- **Comprehensive Tests**: 11 unit tests covering all PDF processing functionality
+- **Comprehensive Tests**: 42 unit tests covering document processing, PDF, and search functionality
 - **Integration Testing**: Real PDF processing with `thinkpython.pdf` (394 chunks)
+- **Interface Testing**: Universal document processor interface validation
 - **Multiple Runners**: Custom runner, pytest, and unittest support
 - **CI Ready**: Configured for automated testing and continuous integration
 

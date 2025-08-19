@@ -1,14 +1,15 @@
 # RAG Store - Document Ingestion Service
 
-A professional document processing and storage service for RAG (Retrieval-Augmented Generation) systems. Converts PDF and text documents into searchable vector embeddings using ChromaDB.
+A professional document processing and storage service for RAG (Retrieval-Augmented Generation) systems with **universal document processor interface**. Converts PDF, text, and markdown documents into searchable vector embeddings using ChromaDB.
 
 ## 🎯 Purpose
 
 RAG Store is the **ingestion microservice** that:
-- Processes PDF and text documents 
+- Processes PDF, text, and markdown documents using universal interface
 - Converts them into vector embeddings
 - Stores them in ChromaDB for semantic search
 - Optimizes chunking for better search quality
+- Supports extensible document processor architecture
 
 ## 🚀 Quick Start
 
@@ -30,12 +31,14 @@ Place your documents in the `data_source/` directory:
 src/rag_store/data_source/
 ├── your_document.pdf
 ├── facts.txt
+├── documentation.md
 └── other_files.pdf
 ```
 
 Supported formats:
 - **PDF files** (`.pdf`) - Processed with PyPDFLoader + RecursiveCharacterTextSplitter
 - **Text files** (`.txt`) - Processed with CharacterTextSplitter
+- **Markdown files** (`.md`) - Processed with CharacterTextSplitter
 
 ### 3. Run Document Ingestion
 
@@ -58,13 +61,22 @@ src/rag_store/
 ├── .env                     # Environment variables
 ├── data_source/            # Input documents directory
 │   ├── *.pdf              # PDF documents
-│   └── *.txt              # Text documents
+│   ├── *.txt              # Text documents
+│   └── *.md               # Markdown documents
+├── document_processor.py   # Universal document processor interface
 ├── pdf_processor.py        # PDF processing and chunking
+├── text_processor.py       # Text and markdown processing
 ├── store_embeddings.py     # Main ingestion script
 └── cli.py                 # Command-line interface
 ```
 
 ## 🔧 Components
+
+### **Universal Document Processor** (`document_processor.py`)
+- **Purpose**: Abstract base class and registry for all document processors
+- **Architecture**: Strategy pattern with processor registry
+- **Features**: Dynamic processor selection, extensible interface, metadata enhancement
+- **Benefits**: Easy to add new document types (Word, Excel, etc.)
 
 ### **PDF Processor** (`pdf_processor.py`)
 - **Purpose**: Extract and chunk text from PDF documents
@@ -72,8 +84,14 @@ src/rag_store/
 - **Parameters**: 1800 chars with 270 overlap (industry best practices)
 - **Features**: Page number tracking, metadata extraction, error handling
 
+### **Text Processor** (`text_processor.py`)
+- **Purpose**: Extract and chunk text from text and markdown files
+- **Technology**: TextLoader + CharacterTextSplitter
+- **Parameters**: 300 chars with 50 overlap (optimized for text content)
+- **Features**: Multiple encoding support, markdown processing, chunk metadata
+
 ### **Store Embeddings** (`store_embeddings.py`)
-- **Purpose**: Convert documents to vectors and store in ChromaDB
+- **Purpose**: Convert documents to vectors and store in ChromaDB using unified interface
 - **Models**: Google (`text-embedding-004`) and OpenAI support
 - **Database**: ChromaDB with separate collections per model
 - **Output**: Stored in `../../../data/chroma_db_google/` or `chroma_db_openai/`
@@ -98,6 +116,13 @@ src/rag_store/
 - **Chunk Size**: 300 characters
 - **Overlap**: 50 characters
 - **Separator**: Double newlines (`\n\n`)
+- **Supported**: `.txt`, `.md`, `.text` files
+
+### **Document Registry**
+- **Pattern**: Registry pattern for processor management
+- **Selection**: Automatic by file extension
+- **Extensibility**: Easy to add new processors (Word, Excel, etc.)
+- **Metadata**: Enhanced metadata with processor information
 
 ### **Embedding Models**
 
@@ -167,12 +192,22 @@ ls data/chroma_db_google/
 
 ### **Programmatic Usage**
 ```python
-from rag_store.store_embeddings import process_pdf_files, process_text_files
+# Using the universal interface (recommended)
+from rag_store.store_embeddings import process_documents_from_directory
 from pathlib import Path
 
-# Process specific directory
+# Process all supported documents in directory
+all_docs = process_documents_from_directory(Path("my_documents/"))
+
+# Legacy individual processing
+from rag_store.store_embeddings import process_pdf_files, process_text_files
 pdf_docs = process_pdf_files(Path("my_pdfs/"))
 text_docs = process_text_files(Path("my_texts/"))
+
+# Using processor registry directly
+from rag_store.store_embeddings import get_document_processor_registry
+registry = get_document_processor_registry()
+documents = registry.process_document(Path("document.pdf"))
 ```
 
 ## 🏗️ Architecture Integration
@@ -209,9 +244,13 @@ Documents → RAG Store → ChromaDB → RAG Fetch → Search Results
 
 ### **Testing**
 ```bash
-# Run store-specific tests
+# Run all store-specific tests
+python -m unittest tests.test_rag_store.test_document_processor -v
 python -m unittest tests.test_rag_store.test_pdf_processor -v
 python -m unittest tests.test_rag_store.test_store_embeddings -v
+
+# Run comprehensive tests (42 total)
+python -m unittest tests.test_rag_store -v
 ```
 
 ### **Dependencies**

@@ -1,19 +1,21 @@
 from dotenv import load_dotenv
-from langchain_community.document_loaders import TextLoader
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_chroma import Chroma
 from langchain.schema import Document
-from langchain_core.embeddings import Embeddings
 from enum import Enum
 from pathlib import Path
 import os
 try:
+    from .document_processor import ProcessorRegistry
     from .pdf_processor import PDFProcessor
+    from .text_processor import TextProcessor
 except ImportError:
     # Fallback for direct execution
+    from document_processor import ProcessorRegistry
     from pdf_processor import PDFProcessor
+    from text_processor import TextProcessor
 
 # Load .env from the same directory as this script
 load_dotenv(Path(__file__).parent / ".env")
@@ -27,21 +29,76 @@ class ModelVendor (Enum):
     OPENAI = "openai"
     GOOGLE = "google"
 
-def load_txt_documents(file_path):
-    """Load documents from text files."""
-    loader = TextLoader(file_path)
-    return loader.load_and_split(
-        text_splitter=get_text_splitter()
-    )
+def get_document_processor_registry() -> ProcessorRegistry:
+    """
+    Initialize and return a document processor registry with all supported processors.
+    
+    Returns:
+        ProcessorRegistry configured with PDF and Text processors
+    """
+    registry = ProcessorRegistry()
+    
+    # Register all available processors
+    registry.register_processor(PDFProcessor())
+    registry.register_processor(TextProcessor())
+    
+    return registry
 
+def process_documents_from_directory(directory_path: Path) -> list[Document]:
+    """
+    Process all supported documents from directory using the processor registry.
+    
+    Args:
+        directory_path: Path to directory containing documents
+        
+    Returns:
+        List of processed Document objects
+    """
+    directory = Path(directory_path)
+    if not directory.exists():
+        raise FileNotFoundError(f"Directory not found: {directory_path}")
+    
+    registry = get_document_processor_registry()
+    supported_extensions = registry.get_supported_extensions()
+    
+    all_documents = []
+    
+    # Process all files with supported extensions
+    for file_path in directory.iterdir():
+        if file_path.is_file() and file_path.suffix.lower() in supported_extensions:
+            try:
+                processor = registry.get_processor_for_file(file_path)
+                if processor:
+                    print(f"Processing {processor.file_type_description}: {file_path.name}")
+                    docs = registry.process_document(file_path)
+                    all_documents.extend(docs)
+                    print(f"  ✓ Extracted {len(docs)} chunks using {processor.processor_name}")
+                else:
+                    print(f"  ⚠ No processor found for {file_path.name}")
+            except Exception as e:
+                print(f"  ✗ Error processing {file_path.name}: {e}")
+    
+    if not all_documents:
+        print(f"No supported documents found in {directory_path}")
+        print(f"Supported extensions: {sorted(supported_extensions)}")
+    
+    return all_documents
+
+# Legacy functions for backward compatibility
+def load_txt_documents(file_path):
+    """Load documents from text files (legacy function)."""
+    registry = get_document_processor_registry()
+    return registry.process_document(Path(file_path))
 
 def process_text_files(directory_path: Path) -> list[Document]:
-    """Process all .txt files in directory using CharacterTextSplitter."""
+    """Process all .txt files in directory (legacy function)."""
     documents = []
+    registry = get_document_processor_registry()
+    
     for txt_file in directory_path.glob("*.txt"):
         try:
             print(f"Processing text file: {txt_file.name}")
-            docs = load_txt_documents(str(txt_file))
+            docs = registry.process_document(txt_file)
             documents.extend(docs)
             print(f"  ✓ Loaded {len(docs)} chunks from {txt_file.name}")
         except Exception as e:
@@ -49,14 +106,14 @@ def process_text_files(directory_path: Path) -> list[Document]:
     return documents
 
 def process_pdf_files(directory_path: Path) -> list[Document]:
-    """Process all .pdf files in directory using RecursiveCharacterTextSplitter."""
+    """Process all .pdf files in directory (legacy function)."""
     documents = []
-    processor = PDFProcessor()
+    registry = get_document_processor_registry()
     
     for pdf_file in directory_path.glob("*.pdf"):
         try:
             print(f"Processing PDF: {pdf_file.name}")
-            docs = processor.pdf_to_documents_recursive(pdf_file)
+            docs = registry.process_document(pdf_file)
             documents.extend(docs)
             print(f"  ✓ Extracted {len(docs)} chunks using RecursiveCharacterTextSplitter")
         except Exception as e:
@@ -64,15 +121,8 @@ def process_pdf_files(directory_path: Path) -> list[Document]:
     return documents
 
 def load_documents_from_directory(directory_path: Path) -> list[Document]:
-    """Load all supported documents from directory."""
-    directory = Path(directory_path)
-    if not directory.exists():
-        raise FileNotFoundError(f"Directory not found: {directory_path}")
-    
-    all_documents = []
-    all_documents.extend(process_text_files(directory))
-    all_documents.extend(process_pdf_files(directory))
-    return all_documents
+    """Load all supported documents from directory (legacy function)."""
+    return process_documents_from_directory(directory_path)
 
 def ensure_data_directory(model_vendor: ModelVendor) -> Path:
     """Ensure the data directory exists for the specified model vendor."""
@@ -134,33 +184,24 @@ def main():
     """Store documents (text and PDF) to ChromaDB using Google embeddings."""
     print("Store embeddings to Chroma!")
     
-    # Try to load from current directory first
-    current_dir = Path("./data_source")
-    all_documents = []
+    # Use the new unified document processing
+    data_source_dir = Path("./data_source")
     
-    # Load individual facts.txt if it exists
-    facts_file = current_dir / "facts.txt"
-    if facts_file.exists():
-        fact_doc = load_txt_documents(str(facts_file))
-        all_documents.extend(fact_doc)
-        print(f"Loaded {len(fact_doc)} chunks from facts.txt")
-    
-    # Load all documents from current directory (including PDFs)
     try:
-        dir_docs = load_documents_from_directory(current_dir)
-        # Avoid duplicating facts.txt if already loaded
-        if facts_file.exists():
-            dir_docs = [doc for doc in dir_docs if doc.metadata.get('source') != str(facts_file)]
-        all_documents.extend(dir_docs)
-        print(f"Loaded {len(dir_docs)} additional chunks from directory")
+        all_documents = process_documents_from_directory(data_source_dir)
+        
+        if not all_documents:
+            print("No documents found. Please ensure you have supported files in the data_source directory.")
+            print("Supported formats:")
+            registry = get_document_processor_registry()
+            for processor_name, processor in registry.get_all_processors().items():
+                print(f"  - {processor.file_type_description}")
+            return
+        
+        print(f"Total documents to store: {len(all_documents)}")
     except Exception as e:
-        print(f"Error loading from directory: {e}")
-    
-    if not all_documents:
-        print("No documents found. Please ensure you have .txt or .pdf files in the current directory.")
+        print(f"Error loading documents: {e}")
         return
-    
-    print(f"Total documents to store: {len(all_documents)}")
 
     # Store documents using Google embeddings
     vectorstore = store_to_chroma(all_documents, ModelVendor.GOOGLE)

@@ -43,10 +43,14 @@ class TestSearchSimilarity(unittest.TestCase):
         self.assertTrue("chroma_db_openai" in str(result))
     
     @patch.dict(os.environ, {'GOOGLE_API_KEY': 'test_key'})
+    @patch('rag_fetch.search_similarity.Path.exists')
     @patch('rag_fetch.search_similarity.Chroma')
     @patch('rag_fetch.search_similarity.GoogleGenerativeAIEmbeddings')
-    def test_similarity_search_mcp_tool_success(self, mock_embeddings, mock_chroma):
+    def test_similarity_search_mcp_tool_success(self, mock_embeddings, mock_chroma, mock_path_exists):
         """Test successful similarity search with MCP tool format."""
+        # Mock path exists check
+        mock_path_exists.return_value = True
+        
         # Mock the embedding model
         mock_embedding_model = Mock()
         mock_embeddings.return_value = mock_embedding_model
@@ -64,7 +68,7 @@ class TestSearchSimilarity(unittest.TestCase):
         mock_doc2.page_content = "More content about machine learning"
         mock_doc2.metadata = {"source": "test2.txt", "chunk_id": 1}
         
-        mock_vectorstore.similarity_search_with_score.return_value = [
+        mock_vectorstore.similarity_search_with_relevance_scores.return_value = [
             (mock_doc1, 0.85),
             (mock_doc2, 0.72)
         ]
@@ -93,10 +97,14 @@ class TestSearchSimilarity(unittest.TestCase):
         self.assertEqual(second_result["relevance_score"], 0.72)
     
     @patch.dict(os.environ, {'GOOGLE_API_KEY': 'test_key'})
+    @patch('rag_fetch.search_similarity.Path.exists')
     @patch('rag_fetch.search_similarity.Chroma')
     @patch('rag_fetch.search_similarity.GoogleGenerativeAIEmbeddings')
-    def test_similarity_search_mcp_tool_no_results(self, mock_embeddings, mock_chroma):
+    def test_similarity_search_mcp_tool_no_results(self, mock_embeddings, mock_chroma, mock_path_exists):
         """Test similarity search with no results."""
+        # Mock path exists check
+        mock_path_exists.return_value = True
+        
         # Mock the embedding model
         mock_embedding_model = Mock()
         mock_embeddings.return_value = mock_embedding_model
@@ -104,7 +112,7 @@ class TestSearchSimilarity(unittest.TestCase):
         # Mock the Chroma vectorstore with no results
         mock_vectorstore = Mock()
         mock_chroma.return_value = mock_vectorstore
-        mock_vectorstore.similarity_search_with_score.return_value = []
+        mock_vectorstore.similarity_search_with_relevance_scores.return_value = []
         
         # Test the function
         result = similarity_search_mcp_tool("nonexistent query", ModelVendor.GOOGLE, limit=5)
@@ -142,14 +150,16 @@ class TestSearchSimilarity(unittest.TestCase):
     def test_similarity_search_default_parameters(self):
         """Test that similarity search handles default parameters correctly."""
         with patch('rag_fetch.search_similarity.Chroma') as mock_chroma, \
-             patch('rag_fetch.search_similarity.GoogleGenerativeAIEmbeddings') as mock_embeddings:
+             patch('rag_fetch.search_similarity.GoogleGenerativeAIEmbeddings') as mock_embeddings, \
+             patch('rag_fetch.search_similarity.Path.exists') as mock_path_exists:
             
             # Mock setup
+            mock_path_exists.return_value = True
             mock_embedding_model = Mock()
             mock_embeddings.return_value = mock_embedding_model
             mock_vectorstore = Mock()
             mock_chroma.return_value = mock_vectorstore
-            mock_vectorstore.similarity_search_with_score.return_value = []
+            mock_vectorstore.similarity_search_with_relevance_scores.return_value = []
             
             # Test with default limit (should be handled gracefully)
             result = similarity_search_mcp_tool("test", ModelVendor.GOOGLE)
