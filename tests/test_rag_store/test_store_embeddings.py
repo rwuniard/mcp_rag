@@ -18,7 +18,9 @@ from unittest.mock import Mock, patch
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 from rag_store.store_embeddings import (
     ModelVendor,
+    get_text_splitter,
     load_embedding_model,
+    load_txt_documents,
     process_documents_from_directory,
     process_pdf_files,
     process_text_files,
@@ -169,6 +171,202 @@ class TestStoreEmbeddings(unittest.TestCase):
         # Should process 3 supported files (pdf, txt, md) but not xyz
         self.assertEqual(mock_registry.process_document.call_count, 3)
         self.assertEqual(len(result), 3)  # 3 supported files × 1 document each
+
+
+class TestStoreEmbeddingsErrorHandling(unittest.TestCase):
+    """Test error handling in store_embeddings module."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.temp_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        """Clean up test fixtures."""
+        shutil.rmtree(self.temp_dir)
+
+    def test_process_documents_from_directory_no_processor_found(self):
+        """Test process_documents_from_directory when no processor found for file."""
+        # Create a file with unsupported extension
+        unsupported_file = Path(self.temp_dir) / "test.xyz"
+        unsupported_file.write_text("test content")
+
+        # Process should handle the unsupported file gracefully
+        documents = process_documents_from_directory(Path(self.temp_dir))
+        
+        # Should return empty list since no processors support .xyz files
+        self.assertEqual(documents, [])
+
+    def test_process_documents_from_directory_processing_error(self):
+        """Test process_documents_from_directory when document processing fails."""
+        # Create a text file
+        text_file = Path(self.temp_dir) / "test.txt"
+        text_file.write_text("test content")
+
+        # Mock processor registry to raise an exception
+        with patch('rag_store.store_embeddings.get_document_processor_registry') as mock_registry:
+            mock_registry_instance = Mock()
+            mock_registry.return_value = mock_registry_instance
+            
+            # Mock processor that raises exception
+            mock_processor = Mock()
+            mock_processor.file_type_description = "Text files"
+            mock_processor.processor_name = "TextProcessor"
+            mock_registry_instance.get_processor_for_file.return_value = mock_processor
+            mock_registry_instance.process_document.side_effect = Exception("Processing failed")
+            mock_registry_instance.get_supported_extensions.return_value = {'.txt'}
+
+            # Process should handle the exception gracefully
+            documents = process_documents_from_directory(Path(self.temp_dir))
+            
+            # Should return empty list due to processing error
+            self.assertEqual(documents, [])
+
+    def test_process_documents_from_directory_empty_directory(self):
+        """Test process_documents_from_directory with empty directory."""
+        # Test with empty directory
+        documents = process_documents_from_directory(Path(self.temp_dir))
+        
+        # Should return empty list and log warning
+        self.assertEqual(documents, [])
+
+    def test_load_txt_documents_function(self):
+        """Test the legacy load_txt_documents function."""
+        # Create a text file
+        text_file = Path(self.temp_dir) / "test.txt"
+        text_file.write_text("test content")
+
+        # Mock the registry
+        with patch('rag_store.store_embeddings.get_document_processor_registry') as mock_registry:
+            mock_registry_instance = Mock()
+            mock_registry.return_value = mock_registry_instance
+            
+            # Mock successful processing
+            mock_doc = Mock()
+            mock_doc.page_content = "test content"
+            mock_registry_instance.process_document.return_value = [mock_doc]
+
+            # Test the function
+            documents = load_txt_documents(text_file)
+            
+            # Verify it uses the registry correctly
+            mock_registry_instance.process_document.assert_called_once_with(text_file)
+            self.assertEqual(len(documents), 1)
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_load_embedding_model_missing_google_key(self):
+        """Test load_embedding_model with missing GOOGLE_API_KEY."""
+        with self.assertRaises(ValueError) as context:
+            load_embedding_model(ModelVendor.GOOGLE)
+        
+        self.assertIn("GOOGLE_API_KEY environment variable is required", str(context.exception))
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_load_embedding_model_missing_openai_key(self):
+        """Test load_embedding_model with missing OPENAI_API_KEY."""
+        with self.assertRaises(ValueError) as context:
+            load_embedding_model(ModelVendor.OPENAI)
+        
+        self.assertIn("OPENAI_API_KEY environment variable is required", str(context.exception))
+
+    def test_get_text_splitter_function(self):
+        """Test the get_text_splitter function."""
+        splitter = get_text_splitter()
+        
+        # Verify splitter configuration
+        self.assertEqual(splitter._chunk_size, 300)
+        self.assertEqual(splitter._chunk_overlap, 50)
+        self.assertEqual(splitter._separator, "\n")
+
+
+class TestMainFunction(unittest.TestCase):
+    """Test the main function for coverage."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.temp_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        """Clean up test fixtures."""
+        shutil.rmtree(self.temp_dir)
+
+    @patch('rag_store.store_embeddings.process_documents_from_directory')
+    @patch('rag_store.store_embeddings.store_to_chroma')
+    @patch('rag_store.store_embeddings.Path')
+    def test_main_function_success(self, mock_path, mock_store_to_chroma, mock_process_docs):
+        """Test main function successful execution."""
+        from rag_store.store_embeddings import main
+        
+        # Mock path for data_source directory
+        mock_data_source_dir = Mock()
+        mock_path.return_value.parent.__truediv__.return_value = mock_data_source_dir
+        
+        # Mock successful document processing
+        mock_doc = Mock()
+        mock_doc.page_content = "test content"
+        mock_doc.metadata = {"source": "test.txt"}
+        mock_process_docs.return_value = [mock_doc]
+        
+        # Mock vectorstore with search capability
+        mock_vectorstore = Mock()
+        mock_vectorstore.similarity_search.return_value = [mock_doc, mock_doc]
+        mock_store_to_chroma.return_value = mock_vectorstore
+        
+        # Call main function
+        main()
+        
+        # Verify function calls
+        mock_process_docs.assert_called_once()
+        mock_store_to_chroma.assert_called_once()
+        
+        # Verify search calls
+        self.assertEqual(mock_vectorstore.similarity_search.call_count, 2)
+
+    @patch('rag_store.store_embeddings.process_documents_from_directory')
+    @patch('rag_store.store_embeddings.get_document_processor_registry')
+    @patch('rag_store.store_embeddings.Path')
+    def test_main_function_no_documents(self, mock_path, mock_get_registry, mock_process_docs):
+        """Test main function when no documents found."""
+        from rag_store.store_embeddings import main
+        
+        # Mock path for data_source directory
+        mock_data_source_dir = Mock()
+        mock_path.return_value.parent.__truediv__.return_value = mock_data_source_dir
+        
+        # Mock no documents found
+        mock_process_docs.return_value = []
+        
+        # Mock registry for format listing
+        mock_registry = Mock()
+        mock_processor = Mock()
+        mock_processor.file_type_description = "Test files"
+        mock_registry.get_all_processors.return_value = {"test": mock_processor}
+        mock_get_registry.return_value = mock_registry
+        
+        # Call main function
+        main()
+        
+        # Verify it handles no documents case
+        mock_process_docs.assert_called_once()
+        mock_get_registry.assert_called_once()
+
+    @patch('rag_store.store_embeddings.process_documents_from_directory')
+    @patch('rag_store.store_embeddings.Path')
+    def test_main_function_exception(self, mock_path, mock_process_docs):
+        """Test main function exception handling."""
+        from rag_store.store_embeddings import main
+        
+        # Mock path for data_source directory
+        mock_data_source_dir = Mock()
+        mock_path.return_value.parent.__truediv__.return_value = mock_data_source_dir
+        
+        # Mock exception during processing
+        mock_process_docs.side_effect = Exception("Processing failed")
+        
+        # Call main function - should not raise exception
+        main()
+        
+        # Verify it attempted processing
+        mock_process_docs.assert_called_once()
 
 
 class TestStoreEmbeddingsIntegration(unittest.TestCase):

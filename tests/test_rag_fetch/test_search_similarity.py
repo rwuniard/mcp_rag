@@ -18,6 +18,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 from rag_fetch.search_similarity import (
     ModelVendor,
     ensure_chroma_directory,
+    load_embedding_model,
+    search_similarity,
     similarity_search_mcp_tool,
 )
 
@@ -195,6 +197,136 @@ class TestSearchSimilarityIntegration(unittest.TestCase):
         self.assertNotEqual(google_path, openai_path)
         self.assertIn("google", str(google_path).lower())
         self.assertIn("openai", str(openai_path).lower())
+
+
+class TestSearchSimilarityErrorHandling(unittest.TestCase):
+    """Test error handling and edge cases."""
+
+    def test_ensure_chroma_directory_invalid_vendor(self):
+        """Test ensure_chroma_directory with invalid vendor."""
+        # Create a mock vendor that's not in the enum
+        class MockVendor:
+            pass
+        
+        mock_vendor = MockVendor()
+        with self.assertRaises(ValueError) as context:
+            ensure_chroma_directory(mock_vendor)
+        
+        self.assertIn("Unsupported model vendor", str(context.exception))
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_load_embedding_model_missing_openai_key(self):
+        """Test load_embedding_model with missing OPENAI_API_KEY."""
+        with self.assertRaises(ValueError) as context:
+            load_embedding_model(ModelVendor.OPENAI)
+        
+        self.assertIn("OPENAI_API_KEY environment variable is required", str(context.exception))
+
+    @patch.dict(os.environ, {}, clear=True) 
+    def test_load_embedding_model_missing_google_key(self):
+        """Test load_embedding_model with missing GOOGLE_API_KEY."""
+        with self.assertRaises(ValueError) as context:
+            load_embedding_model(ModelVendor.GOOGLE)
+        
+        self.assertIn("GOOGLE_API_KEY environment variable is required", str(context.exception))
+
+    def test_load_embedding_model_invalid_vendor(self):
+        """Test load_embedding_model with invalid vendor."""
+        class MockVendor:
+            pass
+        
+        mock_vendor = MockVendor()
+        with self.assertRaises(ValueError) as context:
+            load_embedding_model(mock_vendor)
+        
+        self.assertIn("Unsupported model vendor", str(context.exception))
+
+    def test_search_similarity_exception_handling(self):
+        """Test search_similarity exception handling."""
+        # Mock vectorstore that raises an exception
+        mock_vectorstore = Mock()
+        mock_vectorstore.similarity_search.side_effect = Exception("Search failed")
+        
+        # Test the function
+        results = search_similarity("test query", mock_vectorstore)
+        
+        # Should return empty list on exception
+        self.assertEqual(results, [])
+
+    @patch('rag_fetch.search_similarity.load_vectorstore')
+    def test_search_similarity_with_json_result_exception(self, mock_load_vectorstore):
+        """Test search_similarity_with_json_result exception handling."""
+        # Mock vectorstore that raises an exception  
+        mock_vectorstore = Mock()
+        mock_vectorstore.similarity_search_with_relevance_scores.side_effect = Exception("Database error")
+        mock_load_vectorstore.return_value = mock_vectorstore
+        
+        from rag_fetch.search_similarity import search_similarity_with_json_result
+        
+        # Test the function
+        result = search_similarity_with_json_result("test query", mock_vectorstore)
+        
+        # Should return error response
+        self.assertEqual(result["status"], "error")
+        self.assertEqual(result["query"], "test query")
+        self.assertEqual(result["total_results"], 0)
+        self.assertEqual(result["results"], [])
+        self.assertIn("Database error", result["error"])
+
+
+class TestMainFunction(unittest.TestCase):
+    """Test the main function for coverage."""
+    
+    @patch('rag_fetch.search_similarity.load_vectorstore')
+    @patch('rag_fetch.search_similarity.search_similarity')
+    @patch('rag_fetch.search_similarity.search_similarity_with_json_result')
+    @patch('rag_fetch.search_similarity.similarity_search_mcp_tool')
+    @patch('builtins.print')
+    def test_main_function_success(self, mock_print, mock_mcp_tool, mock_json_result, mock_search, mock_load_vectorstore):
+        """Test main function successful execution."""
+        # Mock successful responses
+        mock_vectorstore = Mock()
+        mock_load_vectorstore.return_value = mock_vectorstore
+        
+        mock_doc = Mock()
+        mock_doc.page_content = "Test content about Python classes"
+        mock_doc.metadata = {"source": "test.txt"}
+        mock_search.return_value = [mock_doc, mock_doc]
+        
+        mock_json_result.return_value = {"query": "test", "results": [], "status": "success"}
+        mock_mcp_tool.return_value = '{"status": "success", "results": []}'
+        
+        from rag_fetch.search_similarity import main
+        
+        # Call main function
+        main()
+        
+        # Verify function calls
+        mock_load_vectorstore.assert_called_once_with(ModelVendor.GOOGLE)
+        mock_search.assert_called_once()
+        mock_json_result.assert_called_once()
+        mock_mcp_tool.assert_called_once()
+        
+        # Verify print statements were called
+        self.assertTrue(mock_print.called)
+
+    @patch('rag_fetch.search_similarity.load_vectorstore')
+    @patch('builtins.print')
+    def test_main_function_exception(self, mock_print, mock_load_vectorstore):
+        """Test main function exception handling."""
+        # Mock exception
+        mock_load_vectorstore.side_effect = Exception("Database connection failed")
+        
+        from rag_fetch.search_similarity import main
+        
+        # Call main function
+        main()
+        
+        # Verify error handling print statements
+        mock_print.assert_any_call("Error during testing: Database connection failed")
+        mock_print.assert_any_call("Make sure you have:")
+        mock_print.assert_any_call("1. GOOGLE_API_KEY set in your .env file")
+        mock_print.assert_any_call("2. Documents stored in the ChromaDB database")
 
 
 if __name__ == "__main__":
