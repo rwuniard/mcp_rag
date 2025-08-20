@@ -7,7 +7,7 @@ A professional RAG (Retrieval-Augmented Generation) system built with Python and
 ### 📥 **RAG Store** - Document Ingestion Service
 Independent service with **universal document processor interface** for processing and storing documents:
 ```bash
-# Store documents to vector database (supports PDF, TXT, MD)
+# Store documents to vector database (supports PDF, Word, TXT, MD)
 python main.py store
 rag-store-cli store
 ```
@@ -26,6 +26,7 @@ rag-mcp-server
 
 ## 🚀 Three Ways to Use
 
+
 ## Quick Start
 
 1. **Install & Setup**:
@@ -40,7 +41,7 @@ rag-mcp-server
 
 2. **Store Documents**:
    ```bash
-   # Place your .txt, .md, and .pdf files in src/rag_store/data_source/
+   # Place your .txt, .md, .pdf, and .docx files in src/rag_store/data_source/
    python main.py store
    ```
 
@@ -191,10 +192,10 @@ The RAG system exposes document search through a single MCP tool:
 
 ### Current Implementation
 - ✅ **Universal Document Interface**: Extensible processor architecture for multiple document types
-- ✅ **Multi-Format Support**: PDF, Word (DOCX/DOC), TXT, and Markdown files with optimized processing
+- ✅ **Multi-Format Support**: PDF, Word (DOCX), TXT, and Markdown files with optimized processing
 - ✅ **Document Storage**: Store documents with ChromaDB vector embeddings
 - ✅ **PDF Processing**: Advanced RecursiveCharacterTextSplitter with page number tracking
-- ✅ **Word Processing**: Docx2txtLoader with RecursiveCharacterTextSplitter for structured content
+- ✅ **Word Processing**: Docx2txtLoader with RecursiveCharacterTextSplitter for modern .docx files
 - ✅ **Text Processing**: CharacterTextSplitter optimized for text and markdown files
 - ✅ **Semantic Search**: Query documents using natural language with similarity scoring
 - ✅ **MCP-Compatible Responses**: JSON-formatted responses ready for MCP integration
@@ -225,14 +226,25 @@ The RAG system exposes document search through a single MCP tool:
 }
 ```
 
-### PDF Processing Features
+### Document Processing Features
+
+**PDF Processing**:
 - **Advanced Text Extraction**: Uses PyPDFLoader for better LangChain integration
 - **RecursiveCharacterTextSplitter**: Intelligent chunking at natural language boundaries
 - **Proven Search Quality**: 5/5 queries show better relevance vs custom chunking
 - **Rich Metadata**: Includes page numbers, creation dates, author, and PDF properties
 - **Optimized Parameters**: Industry best-practice 1800 chars with 270 overlap
-- **Document-Type Aware**: Different strategies for PDFs, text files, and markdown
-- **Mixed Content Support**: Processes text (.txt), markdown (.md), Word (.docx, .doc), and PDF (.pdf) files
+
+**Word Document Processing**:
+- **Modern Format Support**: Handles .docx files (Word 2007+) efficiently
+- **Docx2txtLoader**: Reliable text extraction from .docx files
+- **RecursiveCharacterTextSplitter**: Intelligent chunking at natural language boundaries
+- **Fast Processing**: Optimized for speed and reliability
+- **Optimized Chunking**: Medium-sized chunks (1000 chars, 150 overlap) for structured Word content
+
+**General Features**:
+- **Document-Type Aware**: Different strategies for PDFs, Word documents, text files, and markdown
+- **Mixed Content Support**: Processes text (.txt), markdown (.md), Word (.docx), and PDF (.pdf) files
 - **Error Handling**: Graceful handling of corrupted or unreadable files
 - **Registry Pattern**: Dynamic processor selection by file extension
 

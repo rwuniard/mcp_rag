@@ -34,7 +34,7 @@ class TestWordProcessor(unittest.TestCase):
         """Test WordProcessor initialization."""
         processor = WordProcessor()
         self.assertIsInstance(processor, WordProcessor)
-        self.assertEqual(processor.supported_extensions, {'.docx', '.doc'})
+        self.assertEqual(processor.supported_extensions, {'.docx'})
         self.assertEqual(processor.default_chunk_size, 1000)
         self.assertEqual(processor.default_chunk_overlap, 150)
         self.assertEqual(processor.processor_name, "WordProcessor")
@@ -42,7 +42,7 @@ class TestWordProcessor(unittest.TestCase):
     def test_file_type_description(self):
         """Test file type description."""
         description = self.processor.file_type_description
-        self.assertEqual(description, "Microsoft Word documents (.docx, .doc)")
+        self.assertEqual(description, "Microsoft Word documents (.docx)")
         
     def test_is_supported_file_valid_docx(self):
         """Test is_supported_file with valid DOCX extension."""
@@ -50,11 +50,11 @@ class TestWordProcessor(unittest.TestCase):
         docx_file.touch()
         self.assertTrue(self.processor.is_supported_file(docx_file))
         
-    def test_is_supported_file_valid_doc(self):
-        """Test is_supported_file with valid DOC extension."""
+    def test_is_supported_file_invalid_doc(self):
+        """Test is_supported_file with DOC extension (no longer supported)."""
         doc_file = Path(self.temp_dir) / "test.doc"
         doc_file.touch()
-        self.assertTrue(self.processor.is_supported_file(doc_file))
+        self.assertFalse(self.processor.is_supported_file(doc_file))
         
     def test_is_supported_file_invalid_extension(self):
         """Test is_supported_file with invalid extension."""
@@ -123,15 +123,18 @@ class TestWordProcessorIntegration(unittest.TestCase):
         """Clean up after tests."""
         shutil.rmtree(self.temp_dir)
         
+    @patch('rag_store.word_processor.RecursiveCharacterTextSplitter')
     @patch('rag_store.word_processor.Docx2txtLoader')
     @patch('rag_store.word_processor.log_document_processing_start')
     @patch('rag_store.word_processor.log_document_processing_complete')
-    def test_process_document_success(self, mock_log_complete, mock_log_start, mock_loader_class):
+    def test_process_document_success(self, mock_log_complete, mock_log_start, mock_loader_class, mock_splitter_class):
         """Test successful document processing."""
         # Setup mocks
         mock_log_start.return_value = {"context": "test"}
         mock_loader_instance = Mock()
         mock_loader_class.return_value = mock_loader_instance
+        mock_splitter_instance = Mock()
+        mock_splitter_class.return_value = mock_splitter_instance
         
         # Create mock documents
         mock_doc1 = Document(
@@ -142,7 +145,10 @@ class TestWordProcessorIntegration(unittest.TestCase):
             page_content="Second chunk of text content.", 
             metadata={"source": "test.docx"}
         )
-        mock_loader_instance.load_and_split.return_value = [mock_doc1, mock_doc2]
+        # Mock the document loading and splitting process
+        raw_doc = Document(page_content="Full document content", metadata={"source": "test.docx"})
+        mock_loader_instance.load.return_value = [raw_doc]
+        mock_splitter_instance.split_documents.return_value = [mock_doc1, mock_doc2]
         
         # Create test file
         docx_file = Path(self.temp_dir) / "test.docx"
@@ -158,34 +164,40 @@ class TestWordProcessorIntegration(unittest.TestCase):
         self.assertEqual(documents[0].page_content, "First chunk of text content.")
         self.assertEqual(documents[0].metadata["source"], "test.docx")
         self.assertEqual(documents[0].metadata["chunk_id"], "chunk_0")
-        self.assertEqual(documents[0].metadata["document_id"], "test_docx")
+        self.assertEqual(documents[0].metadata["document_id"], "test_word")
         self.assertEqual(documents[0].metadata["chunk_size"], 800)
         self.assertEqual(documents[0].metadata["chunk_overlap"], 120)
         self.assertEqual(documents[0].metadata["splitting_method"], "RecursiveCharacterTextSplitter")
         self.assertEqual(documents[0].metadata["total_chunks"], 2)
+        self.assertEqual(documents[0].metadata["loader_type"], "Docx2txtLoader")
+        self.assertEqual(documents[0].metadata["supports_legacy_doc"], False)
+        self.assertEqual(documents[0].metadata["separators"], "paragraphs,lines,words,chars")
         
         # Check second document
         self.assertEqual(documents[1].page_content, "Second chunk of text content.")
         self.assertEqual(documents[1].metadata["chunk_id"], "chunk_1")
         
-        # Verify loader was called correctly
+        # Verify loader and splitter were called correctly
         mock_loader_class.assert_called_once_with(str(docx_file))
-        mock_loader_instance.load_and_split.assert_called_once()
+        mock_loader_instance.load.assert_called_once()
+        mock_splitter_class.assert_called_once()
+        mock_splitter_instance.split_documents.assert_called_once_with([raw_doc])
         
         # Verify logging was called
         mock_log_start.assert_called_once()
         mock_log_complete.assert_called_once()
         
+    @patch('rag_store.word_processor.RecursiveCharacterTextSplitter')
     @patch('rag_store.word_processor.Docx2txtLoader')
     @patch('rag_store.word_processor.log_document_processing_start')
     @patch('rag_store.word_processor.log_document_processing_complete')
-    def test_process_document_empty_result(self, mock_log_complete, mock_log_start, mock_loader_class):
+    def test_process_document_empty_result(self, mock_log_complete, mock_log_start, mock_loader_class, mock_splitter_class):
         """Test processing document with empty result."""
         # Setup mocks
         mock_log_start.return_value = {"context": "test"}
         mock_loader_instance = Mock()
         mock_loader_class.return_value = mock_loader_instance
-        mock_loader_instance.load_and_split.return_value = []
+        mock_loader_instance.load.return_value = []
         
         # Create test file
         docx_file = Path(self.temp_dir) / "empty.docx"
@@ -212,7 +224,7 @@ class TestWordProcessorIntegration(unittest.TestCase):
         mock_log_start.return_value = {"context": "test"}
         mock_loader_instance = Mock()
         mock_loader_class.return_value = mock_loader_instance
-        mock_loader_instance.load_and_split.side_effect = Exception("Loading failed")
+        mock_loader_instance.load.side_effect = Exception("Loading failed")
         
         # Create test file
         docx_file = Path(self.temp_dir) / "error.docx"

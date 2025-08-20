@@ -38,7 +38,7 @@ class WordProcessor(DocumentProcessor):
     
     def __init__(self):
         super().__init__()
-        self.supported_extensions = {'.docx', '.doc'}
+        self.supported_extensions = {'.docx'}  # Only support .docx files
         # Word documents often contain structured content, so we use parameters 
         # between PDF (1800/270) and text (300/50) for balanced chunking
         self.default_chunk_size = 1000   # Medium chunks for Word content
@@ -47,7 +47,7 @@ class WordProcessor(DocumentProcessor):
     @property
     def file_type_description(self) -> str:
         """Return a human-readable description of supported file types."""
-        return "Microsoft Word documents (.docx, .doc)"
+        return "Microsoft Word documents (.docx)"
         
     def is_supported_file(self, file_path: Path) -> bool:
         """Check if the file is a supported Word document."""
@@ -100,11 +100,22 @@ class WordProcessor(DocumentProcessor):
         )
         
         try:
-            # Use Docx2txtLoader for Word document loading
+            # Use Docx2txtLoader for reliable .docx file processing
             loader = Docx2txtLoader(str(file_path))
             
+            # Load the Word document first
+            raw_documents = loader.load()
+            
+            if not raw_documents:
+                log_document_processing_complete(
+                    context=context,
+                    chunks_created=0,
+                    processing_time_seconds=time.time() - start_time,
+                    status="success_empty"
+                )
+                return []
+            
             # Use RecursiveCharacterTextSplitter for better text boundary handling
-            # This is better for Word documents which often contain structured content
             text_splitter = RecursiveCharacterTextSplitter(
                 chunk_size=chunk_size,
                 chunk_overlap=chunk_overlap,
@@ -112,8 +123,8 @@ class WordProcessor(DocumentProcessor):
                 separators=["\n\n", "\n", " ", ""]  # Split on paragraphs, then lines, then words
             )
             
-            # Load and split the document
-            documents = loader.load_and_split(text_splitter)
+            # Split the loaded documents
+            documents = text_splitter.split_documents(raw_documents)
             
             if not documents:
                 log_document_processing_complete(
@@ -131,12 +142,15 @@ class WordProcessor(DocumentProcessor):
                 doc.metadata.update(base_metadata)
                 doc.metadata.update({
                     "chunk_id": f"chunk_{i}",
-                    "document_id": f"{file_path.stem}_docx",
+                    "document_id": f"{file_path.stem}_word",
                     "chunk_size": chunk_size,
                     "chunk_overlap": chunk_overlap,
                     "splitting_method": "RecursiveCharacterTextSplitter",
-                    "separators": ["\n\n", "\n", " ", ""],
-                    "total_chunks": len(documents)
+                    "separators": "paragraphs,lines,words,chars",  # ChromaDB doesn't support list metadata
+                    "total_chunks": len(documents),
+                    "document_format": file_path.suffix.upper().replace('.', ''),  # DOCX
+                    "loader_type": "Docx2txtLoader",
+                    "supports_legacy_doc": False
                 })
             
             # Log successful completion
@@ -151,13 +165,22 @@ class WordProcessor(DocumentProcessor):
             return documents
             
         except Exception as e:
-            # Log processing error
+            # Log processing error with specific context
             log_processing_error(
                 context=context,
-                error=str(e),
+                error=e,
                 error_type="word_processing_error"
             )
-            raise Exception(f"Error processing Word document {file_path}: {str(e)}")
+            
+            # Provide helpful error information
+            error_msg = f"Error processing Word document {file_path}: {str(e)}"
+            if "file is not a zip file" in str(e).lower():
+                error_msg += f"\nNote: Docx2txtLoader only supports .docx files (Word 2007+)."
+                error_msg += f"\nFor legacy .doc files, please convert to .docx format first."
+            elif "file is not a Word file" in str(e).lower():
+                error_msg += f"\nNote: The file may be corrupted or in an unsupported Word format."
+            
+            raise Exception(error_msg)
             
     # Legacy method for backward compatibility
     def load_docx_documents(self, file_path: Path) -> List[Document]:

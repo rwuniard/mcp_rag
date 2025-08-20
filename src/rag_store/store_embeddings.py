@@ -235,7 +235,8 @@ def main():
     logger.info("Starting document embedding storage process")
     
     # Use the new unified document processing
-    data_source_dir = Path("./data_source")
+    # Look for data_source in the rag_store directory
+    data_source_dir = Path(__file__).parent / "data_source"
     
     try:
         all_documents = process_documents_from_directory(data_source_dir)

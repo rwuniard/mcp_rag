@@ -117,6 +117,7 @@ jobs:
       - name: Install dependencies
         run: uv sync --dev
 
+
       - name: Create test environment file
         run: |
           cat > .env << EOF
@@ -192,6 +193,7 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
+
       - name: Test CLI entry points
         run: |
           # Test main CLI
@@ -239,6 +241,7 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --dev
+
 
       - name: Create test environment file
         run: |
