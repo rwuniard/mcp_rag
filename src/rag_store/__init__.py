@@ -6,7 +6,7 @@ Can be deployed separately from the search service.
 """
 
 from .pdf_processor import PDFProcessor
-from .store_embeddings import store_to_chroma, load_embedding_model, ModelVendor
+from .store_embeddings import ModelVendor, load_embedding_model, store_to_chroma
 
 __version__ = "0.1.0"
-__all__ = ["PDFProcessor", "store_to_chroma", "load_embedding_model", "ModelVendor"]
+__all__ = ["ModelVendor", "PDFProcessor", "load_embedding_model", "store_to_chroma"]

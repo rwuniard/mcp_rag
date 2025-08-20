@@ -7,6 +7,7 @@ For production use, install the package and use specific CLI commands.
 """
 
 import sys
+
 from pathlib import Path
 
 # Add src to path for development usage
@@ -16,18 +17,21 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 def main():
     print("🤖 MCP RAG - Microservices Architecture")
     print("=" * 50)
-    
+
     if len(sys.argv) > 1:
         service = sys.argv[1]
-        
+
         if service == "store":
             from rag_store.cli import main as store_main
+
             store_main()
         elif service == "search":
             from rag_fetch.cli import main as fetch_main
+
             fetch_main()
         elif service == "server":
             from rag_fetch.mcp_server import main as server_main
+
             server_main()
         else:
             print(f"Unknown service: {service}")

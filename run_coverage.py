@@ -2,7 +2,7 @@
 """
 Test Coverage Runner for MCP RAG Project
 
-This script provides a convenient way to run all unit tests and generate 
+This script provides a convenient way to run all unit tests and generate
 comprehensive coverage reports in multiple formats.
 
 Usage:
@@ -22,12 +22,13 @@ Examples:
     python run_coverage.py --no-html         # Skip HTML generation
 """
 
+import argparse
 import subprocess
 import sys
-import webbrowser
-from pathlib import Path
-import argparse
 import time
+import webbrowser
+
+from pathlib import Path
 
 
 def run_command(command, description):
@@ -35,21 +36,21 @@ def run_command(command, description):
     print(f"🔄 {description}...")
     try:
         result = subprocess.run(
-            command, 
-            shell=True, 
-            capture_output=True, 
+            command,
+            check=False,
+            shell=True,
+            capture_output=True,
             text=True,
-            cwd=Path(__file__).parent
+            cwd=Path(__file__).parent,
         )
-        
+
         if result.returncode == 0:
             print(f"✅ {description} completed successfully")
             return True, result.stdout, result.stderr
-        else:
-            print(f"❌ {description} failed")
-            print(f"Error: {result.stderr}")
-            return False, result.stdout, result.stderr
-            
+        print(f"❌ {description} failed")
+        print(f"Error: {result.stderr}")
+        return False, result.stdout, result.stderr
+
     except Exception as e:
         print(f"❌ {description} failed with exception: {e}")
         return False, "", str(e)
@@ -77,9 +78,9 @@ def show_summary(total_tests, coverage_percent, duration):
 
 def extract_test_count(output):
     """Extract test count from unittest output."""
-    lines = output.split('\n')
+    lines = output.split("\n")
     for line in lines:
-        if line.startswith('Ran ') and ' tests in ' in line:
+        if line.startswith("Ran ") and " tests in " in line:
             # Extract number from "Ran X tests in Y.YYYs"
             parts = line.split()
             if len(parts) >= 2:
@@ -89,13 +90,13 @@ def extract_test_count(output):
 
 def extract_coverage_percent(output):
     """Extract coverage percentage from coverage report."""
-    lines = output.split('\n')
+    lines = output.split("\n")
     for line in lines:
-        if line.startswith('TOTAL') and '%' in line:
+        if line.startswith("TOTAL") and "%" in line:
             # Extract percentage from the TOTAL line
             parts = line.split()
             for part in parts:
-                if part.endswith('%'):
+                if part.endswith("%"):
                     return part
     return "Unknown"
 
@@ -111,39 +112,47 @@ Examples:
   python run_coverage.py --open            # Generate reports and open HTML in browser  
   python run_coverage.py --console-only    # Only console report
   python run_coverage.py --no-html         # Skip HTML generation
-        """
+        """,
     )
-    
-    parser.add_argument('--html-only', action='store_true',
-                        help='Generate only HTML coverage report')
-    parser.add_argument('--console-only', action='store_true', 
-                        help='Generate only console coverage report')
-    parser.add_argument('--no-html', action='store_true',
-                        help='Skip HTML report generation')
-    parser.add_argument('--open', action='store_true',
-                        help='Open HTML report in browser after generation')
-    
+
+    parser.add_argument(
+        "--html-only", action="store_true", help="Generate only HTML coverage report"
+    )
+    parser.add_argument(
+        "--console-only",
+        action="store_true",
+        help="Generate only console coverage report",
+    )
+    parser.add_argument(
+        "--no-html", action="store_true", help="Skip HTML report generation"
+    )
+    parser.add_argument(
+        "--open",
+        action="store_true",
+        help="Open HTML report in browser after generation",
+    )
+
     args = parser.parse_args()
-    
+
     # Validate conflicting options
     if args.html_only and args.console_only:
         print("❌ Error: --html-only and --console-only cannot be used together")
         return 1
-        
+
     if args.html_only and args.no_html:
         print("❌ Error: --html-only and --no-html cannot be used together")
         return 1
-    
+
     start_time = time.time()
     show_header()
-    
+
     # Step 1: Run tests with coverage
     print("📋 Running comprehensive test suite with coverage tracking...")
     success, test_output, test_error = run_command(
         "python -m coverage run --source=src -m unittest discover tests -v",
-        "Test execution with coverage tracking"
+        "Test execution with coverage tracking",
     )
-    
+
     if not success:
         print("\n❌ Tests failed. Coverage report generation aborted.")
         print("\nTest Output:")
@@ -152,46 +161,45 @@ Examples:
             print("\nError Output:")
             print(test_error)
         return 1
-    
+
     # Extract test statistics
     total_tests = extract_test_count(test_output)
-    
+
     # Step 2: Generate console coverage report (unless html-only)
     console_output = ""
     coverage_percent = "Unknown"
-    
+
     if not args.html_only:
         print("\n📊 Generating console coverage report...")
         success, console_output, console_error = run_command(
             "python -m coverage report --show-missing",
-            "Console coverage report generation"
+            "Console coverage report generation",
         )
-        
+
         if success:
             coverage_percent = extract_coverage_percent(console_output)
             if not args.console_only and not args.no_html:
-                print("\n" + "="*60)
+                print("\n" + "=" * 60)
                 print("📋 COVERAGE REPORT")
-                print("="*60)
+                print("=" * 60)
             print(console_output)
         else:
             print("❌ Console coverage report generation failed")
             if console_error:
                 print(f"Error: {console_error}")
-    
+
     # Step 3: Generate HTML coverage report (unless console-only or no-html)
     html_path = None
     if not args.console_only and not args.no_html:
         print("\n🌐 Generating HTML coverage report...")
         success, _, html_error = run_command(
-            "python -m coverage html",
-            "HTML coverage report generation"
+            "python -m coverage html", "HTML coverage report generation"
         )
-        
+
         if success:
             html_path = Path(__file__).parent / "htmlcov" / "index.html"
             print(f"📄 HTML report generated: {html_path}")
-            
+
             # Open in browser if requested
             if args.open:
                 print("🌐 Opening HTML report in default browser...")
@@ -205,21 +213,23 @@ Examples:
             print("❌ HTML coverage report generation failed")
             if html_error:
                 print(f"Error: {html_error}")
-    
+
     # Step 4: Show summary
     duration = time.time() - start_time
     show_summary(total_tests, coverage_percent, duration)
-    
+
     # Step 5: Show next steps
     print("\n💡 NEXT STEPS:")
     if html_path and html_path.exists() and not args.open:
         print(f"   • Open HTML report: open {html_path}")
         print(f"   • Or in browser: file://{html_path.absolute()}")
-    
+
     print("   • View detailed line-by-line coverage in HTML report")
     print("   • Focus on files with <85% coverage for improvement")
-    print("   • Run specific test: python -m unittest tests.test_module.TestClass.test_method")
-    
+    print(
+        "   • Run specific test: python -m unittest tests.test_module.TestClass.test_method"
+    )
+
     print("\n✨ Coverage analysis complete!")
     return 0
 

@@ -7,6 +7,7 @@ Processes and stores documents with embeddings.
 """
 
 import sys
+
 from pathlib import Path
 
 # Add parent directory to path for direct execution
@@ -24,7 +25,7 @@ def main():
     """Entry point for the RAG Store CLI."""
     print("🗄️  RAG Store - Document Ingestion Service")
     print("=" * 50)
-    
+
     if len(sys.argv) > 1 and sys.argv[1] == "store":
         # Run the document storage process
         store_main()

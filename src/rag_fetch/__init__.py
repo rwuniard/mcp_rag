@@ -6,7 +6,7 @@ Includes MCP server for AI assistant integration.
 Can be deployed separately from the ingestion service.
 """
 
-from .search_similarity import similarity_search_mcp_tool, ModelVendor
+from .search_similarity import ModelVendor, similarity_search_mcp_tool
 
 __version__ = "0.1.0"
-__all__ = ["similarity_search_mcp_tool", "ModelVendor"]
+__all__ = ["ModelVendor", "similarity_search_mcp_tool"]
