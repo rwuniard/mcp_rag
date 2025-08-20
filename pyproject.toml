@@ -35,9 +35,6 @@ dependencies = [
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
-    "black>=23.0.0",
-    "isort>=5.12.0",
-    "flake8>=6.0.0",
 ]
 
 [project.scripts]
@@ -63,30 +60,145 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short"
 
-[tool.black]
-line-length = 88
-target-version = ['py312']
-include = '\.pyi?$'
-extend-exclude = '''
-/(
-  # directories
-  \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | build
-  | dist
-)/
-'''
+# Legacy configurations removed - now handled by Ruff
 
-[tool.isort]
-profile = "black"
-multi_line_output = 3
-line_length = 88
+# Ruff configuration - Modern Python linting and formatting
+[tool.ruff]
+# Set line length to match black
+line-length = 88
+target-version = "py312"
+
+# Enable additional rules beyond defaults
+[tool.ruff.lint]
+# Enable rule categories (replaces flake8, isort, and more)
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort (import sorting)
+    "N",    # pep8-naming
+    "D",    # pydocstyle (documentation)
+    "UP",   # pyupgrade (modern Python idioms)
+    "YTT",  # flake8-2020
+    "ANN",  # flake8-annotations
+    "S",    # flake8-bandit (security)
+    "BLE",  # flake8-blind-except
+    "B",    # flake8-bugbear
+    "A",    # flake8-builtins
+    "COM",  # flake8-commas
+    "C4",   # flake8-comprehensions
+    "DTZ",  # flake8-datetimez
+    "T10",  # flake8-debugger
+    "EM",   # flake8-errmsg
+    "EXE",  # flake8-executable
+    "FA",   # flake8-future-annotations
+    "ISC",  # flake8-implicit-str-concat
+    "ICN",  # flake8-import-conventions
+    "G",    # flake8-logging-format
+    "INP",  # flake8-no-pep420
+    "PIE",  # flake8-pie
+    "T20",  # flake8-print
+    "PYI",  # flake8-pyi
+    "PT",   # flake8-pytest-style
+    "Q",    # flake8-quotes
+    "RSE",  # flake8-raise
+    "RET",  # flake8-return
+    "SLF",  # flake8-self
+    "SLOT", # flake8-slots
+    "SIM",  # flake8-simplify
+    "TID",  # flake8-tidy-imports
+    "TCH",  # flake8-type-checking
+    "INT",  # flake8-gettext
+    "ARG",  # flake8-unused-arguments
+    "PTH",  # flake8-use-pathlib
+    "TD",   # flake8-todos
+    "FIX",  # flake8-fixme
+    "ERA",  # eradicate (commented code)
+    "PD",   # pandas-vet
+    "PGH",  # pygrep-hooks
+    "PL",   # pylint
+    "TRY",  # tryceratops
+    "FLY",  # flynt
+    "NPY",  # numpy
+    "PERF", # perflint
+    "FURB", # refurb
+    "LOG",  # flake8-logging
+    "RUF",  # ruff-specific rules
+]
+
+# Disable specific rules that might be too strict for this project
+ignore = [
+    # Documentation rules - can enable later
+    "D",      # All pydocstyle rules (too strict for now)
+    
+    # Type annotation rules - can enable gradually
+    "ANN",    # All annotation rules (too strict for now)
+    
+    # Print statements - needed for CLI tools and scripts
+    "T20",    # flake8-print (allow print statements)
+    
+    # Import organization - will fix gradually
+    "PLC0415", # Import outside top-level
+    
+    # Test-related ignores
+    "S101",   # Use of assert detected (allow for tests)
+    "PT",     # pytest rules (currently using unittest)
+    
+    # TODO and fixme comments
+    "TD",     # flake8-todos
+    "FIX",    # flake8-fixme
+    
+    # Commented code - sometimes useful
+    "ERA001", # Found commented-out code
+    
+    # Pylint rules that might be too strict
+    "PLR0913", # Too many arguments to function call
+    "PLR0915", # Too many statements
+    "PLR2004", # Magic value used in comparison
+    
+    # Formatting conflicts
+    "COM812",  # Trailing comma missing (conflicts with ruff format)
+    "ISC001",  # Implicitly concatenated string literals (conflicts with ruff format)
+    
+    # Path and file handling
+    "EXE001",  # Shebang without executable permission
+    
+    # Quote style - let ruff format handle this
+    "Q000",    # Single quotes (let formatter decide)
+    "Q001",    # Single quote docstrings
+]
+
+# Files to exclude
+[tool.ruff.lint.extend-per-file-ignores]
+"tests/*" = [
+    "S101",   # Use of assert detected
+    "ANN",    # Type annotations not required in tests
+    "D",      # Documentation not required in tests
+    "PLR2004", # Magic value used in comparison
+]
+"scripts/*" = [
+    "T20",    # Print statements allowed in scripts
+    "ANN",    # Type annotations not required in scripts
+]
+
+# Configure specific linting rules
+[tool.ruff.lint.pydocstyle]
+convention = "google"  # Use Google-style docstrings
+
+[tool.ruff.lint.isort]
+known-first-party = ["rag_store", "rag_fetch"]
+force-single-line = false
+lines-between-types = 1
+
+# Ruff formatting configuration (replaces black)
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
 
 [dependency-groups]
 dev = [
     "coverage>=7.10.4",
+    "ruff>=0.12.9",
 ]
