@@ -129,7 +129,7 @@ jobs:
         run: |
           uv run python -m coverage run --source=src -m unittest discover tests -v
           uv run python -m coverage report --show-missing
-          uv run python -m coverage xml
+          uv run python -m coverage xml     
           uv run python -m coverage html
         
       - name: Check coverage threshold
@@ -161,8 +161,8 @@ jobs:
         with:
           file: ./coverage.xml
           flags: unittests
-          name: codecov-umbrella
           token: ${{ secrets.CODECOV_TOKEN }}
+          name: codecov-umbrella
           fail_ci_if_error: false
 
       - name: Upload coverage HTML report
