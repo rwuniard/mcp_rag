@@ -210,7 +210,7 @@ jobs:
 
       - name: Test coverage tool
         run: |
-          python run_coverage.py --console-only
+          uv run python run_coverage.py --console-only
 
       - name: Test package installation
         run: |
