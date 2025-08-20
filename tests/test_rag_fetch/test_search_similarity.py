@@ -127,12 +127,11 @@ class TestSearchSimilarity(unittest.TestCase):
         self.assertEqual(len(result_data["results"]), 0)
     
     @patch.dict(os.environ, {'GOOGLE_API_KEY': 'test_key'})
-    @patch('rag_fetch.search_similarity.Chroma')
-    @patch('rag_fetch.search_similarity.GoogleGenerativeAIEmbeddings')
-    def test_similarity_search_mcp_tool_error_handling(self, mock_embeddings, mock_chroma):
+    @patch('rag_fetch.search_similarity.Path.exists')
+    def test_similarity_search_mcp_tool_error_handling(self, mock_path_exists):
         """Test similarity search error handling."""
-        # Mock the embedding model to raise an exception
-        mock_embeddings.side_effect = Exception("Database connection failed")
+        # Mock the database directory to not exist, which will trigger an error
+        mock_path_exists.return_value = False
         
         # Test the function
         result = similarity_search_mcp_tool("test query", ModelVendor.GOOGLE, limit=3)
@@ -144,7 +143,7 @@ class TestSearchSimilarity(unittest.TestCase):
         self.assertEqual(result_data["status"], "error")
         self.assertEqual(result_data["query"], "test query")
         self.assertIn("error", result_data)
-        self.assertIn("Database connection failed", result_data["error"])
+        self.assertIn("Database directory not found", result_data["error"])
     
     @patch.dict(os.environ, {'GOOGLE_API_KEY': 'test_key'})
     def test_similarity_search_default_parameters(self):
