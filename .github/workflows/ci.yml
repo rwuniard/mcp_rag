@@ -55,6 +55,9 @@ jobs:
   security:
     name: Security Scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -90,7 +93,7 @@ jobs:
           output: 'trivy-results.sarif'
 
       - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: 'trivy-results.sarif'
@@ -164,7 +167,7 @@ jobs:
           fail_ci_if_error: false
 
       - name: Upload coverage HTML report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: coverage-report
@@ -308,8 +311,11 @@ jobs:
             }
 
       - name: Publish to PyPI (Optional - configure secrets)
-        if: env.PYPI_API_TOKEN != ''
         env:
           PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         run: |
-          uv publish --token $PYPI_API_TOKEN
+          if [ -n "$PYPI_API_TOKEN" ]; then
+            uv publish --token $PYPI_API_TOKEN
+          else
+            echo "PYPI_API_TOKEN not configured, skipping PyPI publish"
+          fi
