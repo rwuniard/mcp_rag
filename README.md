@@ -263,6 +263,20 @@ GOOGLE_API_KEY=your_google_api_key_here
 # OPENAI_API_KEY=your_openai_api_key_here  # Optional, for OpenAI embeddings
 ```
 
+### IDE Configuration
+
+To configure your IDE to use the correct Python interpreter and environment:
+
+1. **Open Command Palette**: Press `Shift+Cmd+P` (macOS) or `Shift+Ctrl+P` (Windows/Linux)
+2. **Select Python Interpreter**: Choose `Python: Select Interpreter`
+3. **Enter Interpreter Path**: Select `Enter interpreter path...`
+4. **Specify Virtual Environment**: Enter the absolute path to your virtual environment's Python executable:
+   ```
+   /absolute/path/to/your/project/.venv/bin/python
+   ```
+
+This ensures your IDE uses the correct virtual environment with all project dependencies installed via `uv sync`.
+
 ## MCP Integration
 
 ### Adding to Claude Desktop
