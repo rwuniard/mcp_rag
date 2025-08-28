@@ -91,7 +91,7 @@ class TestPDFProcessorInterface(unittest.TestCase):
     def test_pdf_processor_file_type_description(self):
         """Test file type description."""
         description = self.processor.file_type_description
-        self.assertEqual(description, "PDF documents (.pdf)")
+        self.assertEqual(description, "PDF documents (.pdf) with OCR support")
 
     def test_pdf_processor_file_support(self):
         """Test file support checking."""

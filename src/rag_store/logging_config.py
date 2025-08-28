@@ -43,43 +43,81 @@ structlog.configure(
 logger = structlog.get_logger("rag_store")
 
 # Prometheus Metrics for Document Processing
-METRICS = {
-    # Counters
-    "documents_processed_total": Counter(
-        "rag_documents_processed_total",
-        "Total number of documents processed",
-        ["processor_type", "file_type", "status"],
-    ),
-    "chunks_created_total": Counter(
-        "rag_chunks_created_total",
-        "Total number of chunks created",
-        ["processor_type", "file_type"],
-    ),
-    "processing_errors_total": Counter(
-        "rag_processing_errors_total",
-        "Total number of processing errors",
-        ["processor_type", "error_type"],
-    ),
-    # Histograms
-    "document_processing_duration_seconds": Histogram(
-        "rag_document_processing_duration_seconds",
-        "Time spent processing documents",
-        ["processor_type", "file_type"],
-        buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0],
-    ),
-    "document_size_bytes": Histogram(
-        "rag_document_size_bytes",
-        "Size of processed documents in bytes",
-        ["processor_type", "file_type"],
-        buckets=[1000, 10000, 100000, 1000000, 10000000, 100000000],
-    ),
-    # Gauges
-    "active_processors": Gauge(
-        "rag_active_processors",
-        "Number of active document processors",
-        ["processor_type"],
-    ),
-}
+# Use a module-level flag to prevent duplicate registration
+_metrics_initialized = False
+METRICS = {}
+
+def _initialize_metrics():
+    """Initialize Prometheus metrics only once."""
+    global _metrics_initialized, METRICS
+    if not _metrics_initialized:
+        try:
+            # Clear any existing metrics to prevent duplicates in test environments
+            from prometheus_client import REGISTRY
+            
+            # Try to unregister existing metrics if they exist
+            metric_names = [
+                "rag_documents_processed_total",
+                "rag_chunks_created_total", 
+                "rag_processing_errors_total",
+                "rag_document_processing_duration_seconds",
+                "rag_document_size_bytes",
+                "rag_active_processors"
+            ]
+            
+            for name in metric_names:
+                try:
+                    collector = next((c for c in REGISTRY._collector_to_names if name in REGISTRY._collector_to_names.get(c, [])), None)
+                    if collector:
+                        REGISTRY.unregister(collector)
+                except (AttributeError, StopIteration, KeyError):
+                    pass  # Metric doesn't exist or already unregistered
+            
+            METRICS = {
+                # Counters
+                "documents_processed_total": Counter(
+                    "rag_documents_processed_total",
+                    "Total number of documents processed",
+                    ["processor_type", "file_type", "status"],
+                ),
+                "chunks_created_total": Counter(
+                    "rag_chunks_created_total",
+                    "Total number of chunks created",
+                    ["processor_type", "file_type"],
+                ),
+                "processing_errors_total": Counter(
+                    "rag_processing_errors_total",
+                    "Total number of processing errors",
+                    ["processor_type", "error_type"],
+                ),
+                # Histograms
+                "document_processing_duration_seconds": Histogram(
+                    "rag_document_processing_duration_seconds",
+                    "Time spent processing documents",
+                    ["processor_type", "file_type"],
+                    buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0],
+                ),
+                "document_size_bytes": Histogram(
+                    "rag_document_size_bytes",
+                    "Size of processed documents in bytes",
+                    ["processor_type", "file_type"],
+                    buckets=[1000, 10000, 100000, 1000000, 10000000, 100000000],
+                ),
+                # Gauges
+                "active_processors": Gauge(
+                    "rag_active_processors",
+                    "Number of active document processors",
+                    ["processor_type"],
+                ),
+            }
+            _metrics_initialized = True
+        except Exception:
+            # If metrics initialization fails, just use empty dict
+            METRICS = {}
+            _metrics_initialized = True
+
+# Initialize metrics when module is imported
+_initialize_metrics()
 
 
 def get_logger(name: str = None) -> structlog.stdlib.BoundLogger:

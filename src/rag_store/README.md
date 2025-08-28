@@ -1,15 +1,16 @@
 # RAG Store - Document Ingestion Service
 
-A professional document processing and storage service for RAG (Retrieval-Augmented Generation) systems with **universal document processor interface**. Converts PDF, text, and markdown documents into searchable vector embeddings using ChromaDB.
+A professional document processing and storage service for RAG (Retrieval-Augmented Generation) systems with **universal document processor interface**. Converts PDF, Word, MHT/MHTML, text, and markdown documents into searchable vector embeddings using ChromaDB.
 
 ## 🎯 Purpose
 
 RAG Store is the **ingestion microservice** that:
-- Processes PDF, text, and markdown documents using universal interface
+- Processes PDF, Word, MHT/MHTML, text, and markdown documents using universal interface
 - Converts them into vector embeddings
 - Stores them in ChromaDB for semantic search
 - Optimizes chunking for better search quality
 - Supports extensible document processor architecture
+- Features robust error handling with fallback parsing for problematic files
 
 ## 🚀 Quick Start
 
@@ -22,27 +23,60 @@ GOOGLE_API_KEY=your_google_api_key_here
 
 # Optional for OpenAI embeddings
 OPENAI_API_KEY=your_openai_api_key_here
+
+# Optional for OCR debugging
+# OCR_INVESTIGATE=false
+# OCR_INVESTIGATE_DIR=./ocr_debug
 ```
 
-### 2. Add Documents
+### 2. Install Tesseract OCR (Optional)
+
+For OCR support on image-based PDFs, install Tesseract OCR engine:
+
+```bash
+# macOS
+brew install tesseract
+
+# Ubuntu/Debian
+sudo apt-get update
+sudo apt-get install tesseract-ocr
+
+# Windows (Chocolatey)
+choco install tesseract
+
+# Or download Windows installer from:
+# https://github.com/UB-Mannheim/tesseract/wiki
+```
+
+**Verify installation:**
+```bash
+tesseract --version
+# Should output: tesseract 5.x.x
+```
+
+**Note**: Without Tesseract, the system will still process PDFs but won't perform OCR on image-based content.
+
+### 3. Add Documents
 
 Place your documents in the `data_source/` directory:
 ```
 src/rag_store/data_source/
 ├── your_document.pdf
 ├── report.docx
+├── web_archive.mht
 ├── facts.txt
 ├── documentation.md
 └── other_files.pdf
 ```
 
 Supported formats:
-- **PDF files** (`.pdf`) - Processed with PyPDFLoader + RecursiveCharacterTextSplitter
+- **PDF files** (`.pdf`) - Processed with PyMuPDF (with OCR support) + RecursiveCharacterTextSplitter
 - **Word documents** (`.docx`, `.doc`) - Processed with Docx2txtLoader + RecursiveCharacterTextSplitter
+- **MHT/MHTML files** (`.mht`, `.mhtml`) - Processed with UnstructuredLoader + manual MIME parser fallback + RecursiveCharacterTextSplitter
 - **Text files** (`.txt`) - Processed with CharacterTextSplitter
 - **Markdown files** (`.md`) - Processed with CharacterTextSplitter
 
-### 3. Run Document Ingestion
+### 4. Run Document Ingestion
 
 ```bash
 # From project root
@@ -63,12 +97,14 @@ src/rag_store/
 ├── .env                     # Environment variables
 ├── data_source/            # Input documents directory
 │   ├── *.pdf              # PDF documents
-│   ├── *.docx             # Word documents
+│   ├── *.docx             # Word documents  
+│   ├── *.mht              # MHT/MHTML web archives
 │   ├── *.txt              # Text documents
 │   └── *.md               # Markdown documents
 ├── document_processor.py   # Universal document processor interface
 ├── pdf_processor.py        # PDF processing and chunking
 ├── word_processor.py       # Word document processing and chunking
+├── mht_processor.py        # MHT/MHTML web archive processing
 ├── text_processor.py       # Text and markdown processing
 ├── logging_config.py       # Structured logging configuration
 ├── store_embeddings.py     # Main ingestion script
@@ -164,16 +200,36 @@ The structured logging is designed for:
 - **Benefits**: Easy to add new document types (Word, Excel, etc.)
 
 ### **PDF Processor** (`pdf_processor.py`)
-- **Purpose**: Extract and chunk text from PDF documents
-- **Technology**: PyPDFLoader + RecursiveCharacterTextSplitter
+- **Purpose**: Extract and chunk text from PDF documents with advanced OCR support for image-based PDFs
+- **Technology**: PyMuPDF + Tesseract OCR + RecursiveCharacterTextSplitter
 - **Parameters**: 1800 chars with 270 overlap (industry best practices)
-- **Features**: Page number tracking, metadata extraction, error handling
+- **Features**: 
+  - **True OCR Support**: Tesseract OCR engine for scanned documents and image-based PDFs
+  - **Multi-layer Text Extraction**: 
+    - Primary: Direct text extraction from PDF structure
+    - Secondary: Structured text blocks for complex layouts  
+    - Tertiary: Tesseract OCR for image content (<50 chars triggers OCR)
+  - **Intelligent Fallback**: Automatic detection and processing of image-based content
+  - **Page Tracking**: Maintains page numbers and document structure
+  - **Enhanced Metadata**: Extraction method tracking (pymupdf_text, pymupdf_blocks, tesseract_ocr)
 
 ### **Word Processor** (`word_processor.py`)
 - **Purpose**: Extract and chunk text from Microsoft Word documents
 - **Technology**: Docx2txtLoader + RecursiveCharacterTextSplitter
 - **Parameters**: 1000 chars with 150 overlap (balanced for Word content)
 - **Features**: Structured text extraction, metadata enhancement, error handling
+
+### **MHT Processor** (`mht_processor.py`)
+- **Purpose**: Extract and chunk text from MHT/MHTML web archive files with robust error handling
+- **Technology**: Dual-parser architecture with UnstructuredLoader + manual MIME parser fallback + RecursiveCharacterTextSplitter  
+- **Parameters**: 1200 chars with 180 overlap (optimized for HTML content)
+- **Features**: 
+  - **Primary Parser**: UnstructuredLoader with element mode and fast strategy
+  - **Fallback Parser**: Manual MIME email parser for problematic MHT files with email-style headers
+  - **HTML Text Extraction**: BeautifulSoup and regex-based conversion with proper entity decoding
+  - **Enhanced Metadata**: Extraction method tracking, title preservation, content type detection
+  - **Error Recovery**: Graceful fallback when UnstructuredLoader fails with FileType.UNK errors
+- **Troubleshooting**: Resolves issues with MHT files that have email-style headers causing UnstructuredLoader failures
 
 ### **Text Processor** (`text_processor.py`)
 - **Purpose**: Extract and chunk text from text and markdown files
@@ -200,11 +256,17 @@ The structured logging is designed for:
 ## 📊 Processing Details
 
 ### **PDF Processing**
-- **Loader**: PyPDFLoader (LangChain integration)
+- **Loader**: PyMuPDF (fitz) with Tesseract OCR integration
 - **Splitter**: RecursiveCharacterTextSplitter
 - **Chunk Size**: 1800 characters
-- **Overlap**: 270 characters
-- **Metadata**: Page numbers, document properties, chunk IDs
+- **Overlap**: 270 characters (15% overlap ratio)
+- **OCR Features**: 
+  - **Primary Text Extraction**: Direct text extraction from PDF structure
+  - **Block Extraction**: Structured text block parsing for complex layouts
+  - **Tesseract OCR**: True OCR for image-based content (<50 chars triggers OCR)
+  - **Intelligent Detection**: Automatic identification of image-based pages
+  - **High-Quality Processing**: 300 DPI rendering for optimal OCR accuracy
+- **Metadata**: Page numbers, extraction method (pymupdf_text/blocks/tesseract_ocr), processing details
 
 ### **Word Processing**
 - **Loader**: Docx2txtLoader (LangChain Community)
@@ -213,6 +275,18 @@ The structured logging is designed for:
 - **Overlap**: 150 characters
 - **Separators**: Paragraphs, lines, words, characters
 - **Supported**: `.docx`, `.doc` files
+
+### **MHT/MHTML Processing**
+- **Primary Loader**: UnstructuredLoader (element mode, fast strategy)
+- **Fallback Parser**: Python email library for MIME structure parsing
+- **Text Extractor**: BeautifulSoup with regex fallback for HTML-to-text conversion
+- **Splitter**: RecursiveCharacterTextSplitter
+- **Chunk Size**: 1200 characters
+- **Overlap**: 180 characters (15% overlap ratio)
+- **Separators**: HTML-friendly separators (`\n\n`, `\n`, ` `, `""`)
+- **Supported**: `.mht`, `.mhtml` files
+- **Error Handling**: Automatic fallback for files with email-style headers that cause UnstructuredLoader FileType.UNK errors
+- **Metadata**: Extraction method, title preservation, content type, source format
 
 ### **Text Processing** 
 - **Loader**: TextLoader (LangChain)
@@ -383,8 +457,15 @@ langchain = ">=0.3.27"
 langchain-chroma = ">=0.2.5"
 langchain-community = ">=0.3.27"
 langchain-google-genai = ">=2.0.10"
-pypdf = ">=5.1.0"
+pymupdf = ">=1.26.4"
+pytesseract = ">=0.3.13"
+pillow = ">=11.3.0"
 python-dotenv = ">=1.1.1"
+
+# MHT/MHTML processing dependencies
+unstructured = ">=0.18.14"
+langchain-unstructured = ">=0.1.6"
+beautifulsoup4 = ">=4.13.5"
 
 # Logging and observability
 structlog = ">=24.1.0"

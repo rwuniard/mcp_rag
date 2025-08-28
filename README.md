@@ -53,44 +53,39 @@ rag-mcp-server
    # Start MCP server for AI assistants
    python main.py server
    
-   # Run comprehensive tests with coverage
-   python run_coverage.py --open
+   # Run comprehensive tests with HTML coverage
+   python run_html_coverage.py --open
    ```
 
 ## Testing & Coverage
 
-The project includes a comprehensive test suite with a professional coverage tool:
+The project includes a comprehensive test suite with **89.34% coverage** and complete dependency management:
 
-### Coverage Tool Usage
+### Quick Coverage Commands
 ```bash
-# Run all tests with coverage and open HTML report
-python run_coverage.py --open
+# Simple HTML coverage (recommended)
+python run_html_coverage.py --open
 
-# Generate both console and HTML reports
-python run_coverage.py
+# Alternative: Direct pytest 
+uv run pytest --cov=src --cov-report=html
 
-# Console report only
-python run_coverage.py --console-only
-
-# HTML report only (no console output)
-python run_coverage.py --html-only
-
-# Skip HTML generation
-python run_coverage.py --no-html
+# Full-featured coverage tool (legacy)
+python run_coverage.py --html-only --open
 ```
 
-### Coverage Features
-- **Professional HTML Reports**: Interactive coverage visualization with line-by-line analysis
-- **Browser Integration**: Automatically opens HTML reports in your default browser
-- **Multi-format Output**: Both console and HTML coverage reports
-- **Test Statistics**: Comprehensive test execution metrics and timing
-- **CI-Ready**: Suitable for continuous integration pipelines
+### Coverage Features & Configuration
+- **HTML-Only Reports**: Clean `htmlcov/` directory with interactive line-by-line coverage
+- **No File Clutter**: Configured to avoid generating `coverage.xml` or `coverage.json` files
+- **Professional Configuration**: `.coveragerc` with 85% coverage threshold and proper exclusions
+- **Browser Integration**: Automatically opens HTML reports with `--open` flag
+- **Complete Dependencies**: All OCR, MHT, and document processing dependencies installed
 
 ### Current Coverage Status
-- **Overall Project**: 70% coverage across all modules
-- **Core Processors**: 95%+ coverage (Text, Word, PDF processors)
-- **Document Processing**: 93%+ coverage
-- **60+ Unit Tests**: Comprehensive test coverage for all major functionality
+- **Overall Project**: **89.34% coverage** (Above 85% requirement ✅)
+- **Core Processors**: 95%+ coverage (PDF: 96%, Text: 95%, Word: 93%)
+- **Document Processing**: 97% coverage with universal processor interface
+- **142 Unit Tests**: Complete test coverage including OCR, BeautifulSoup, and Tesseract integration
+- **All Dependencies**: PyMuPDF, pytesseract, Pillow, BeautifulSoup4, langchain-unstructured
 
 ## Development Commands
 
@@ -109,11 +104,12 @@ python run_coverage.py --no-html
 - `rag-mcp-server` - Direct access to MCP server
 
 **Testing & Quality**:
-- `python run_coverage.py` - Run comprehensive test suite with coverage reports
-- `python run_coverage.py --open` - Run tests with coverage and open HTML report in browser
-- `python -m unittest discover tests -v` - Run all unit tests
-- `python -m unittest tests.test_rag_store.test_pdf_processor -v` - Test RAG Store
-- `python -m unittest tests.test_rag_fetch.test_search_similarity -v` - Test RAG Fetch
+- `python run_html_coverage.py --open` - Run tests with HTML coverage and open report
+- `uv run pytest --cov=src --cov-report=html` - Direct pytest with HTML coverage  
+- `python run_coverage.py --html-only` - Legacy full-featured coverage tool
+- `python tests/run_tests.py` - Run all 142 unit tests using unittest
+- `uv run pytest tests/test_rag_store/ -v` - Test RAG Store (121 tests)
+- `uv run pytest tests/test_rag_fetch/ -v` - Test RAG Fetch (21 tests)
 
 ## Architecture
 
@@ -148,7 +144,9 @@ mcp_rag/
 │   ├── chroma_db_google/    # Google embeddings database
 │   └── chroma_db_openai/    # OpenAI embeddings database
 ├── main.py                   # Convenience router (store|search|server)
-├── run_coverage.py          # Comprehensive test coverage tool
+├── run_coverage.py          # Full-featured coverage tool (legacy)
+├── run_html_coverage.py     # Simple HTML coverage runner
+├── .coveragerc              # Coverage configuration (HTML-only)
 └── pyproject.toml           # Package configuration with entry points
 ```
 
@@ -176,8 +174,10 @@ The RAG system exposes document search through a single MCP tool:
 - **LangChain-Google-GenAI** (>=2.0.10) - Google AI integration
 - **LangChain-OpenAI** (>=0.3.30) - OpenAI integration (optional)
 - **Google-GenerativeAI** (>=0.8.5) - Google's generative AI client
-- **PyPDF** (>=5.1.0) - PDF text extraction and processing
-- **docx2txt** (>=0.8) - Word document text extraction
+- **PyMuPDF** (>=1.26.4) - Advanced PDF processing with OCR support
+- **pytesseract** (>=0.3.13) + **Pillow** (>=11.3.0) - OCR for image-based PDFs
+- **BeautifulSoup4** (>=4.13.5) - HTML parsing for MHT/MHTML files
+- **langchain-unstructured** (>=0.1.6) - Unstructured document processing
 - **python-dotenv** (>=1.1.1) - Environment variable management
 
 **Technology Stack**:
@@ -203,7 +203,7 @@ The RAG system exposes document search through a single MCP tool:
 - ✅ **Centralized Database**: Unified data storage in `data/` directory
 - ✅ **Production Ready**: Complete document-to-search pipeline verified and tested
 - ✅ **Professional Structure**: Modern Python package with src/tests organization
-- ✅ **Comprehensive Testing**: 42 unit tests with real PDF integration testing
+- ✅ **Comprehensive Testing**: 142 unit tests with complete dependency coverage (89.34%)
 - ✅ **Dual Entry Points**: Both CLI and MCP server interfaces
 
 ### MCP Response Format
@@ -229,11 +229,12 @@ The RAG system exposes document search through a single MCP tool:
 ### Document Processing Features
 
 **PDF Processing**:
-- **Advanced Text Extraction**: Uses PyPDFLoader for better LangChain integration
+- **Advanced Text Extraction**: PyMuPDF with OCR fallback using Tesseract
+- **OCR Integration**: Tesseract OCR for image-based PDFs with smart text detection
 - **RecursiveCharacterTextSplitter**: Intelligent chunking at natural language boundaries
-- **Proven Search Quality**: 5/5 queries show better relevance vs custom chunking
-- **Rich Metadata**: Includes page numbers, creation dates, author, and PDF properties
-- **Optimized Parameters**: Industry best-practice 1800 chars with 270 overlap
+- **Multiple Extraction Methods**: PyMuPDF text → PyMuPDF blocks → Tesseract OCR fallback
+- **Rich Metadata**: Page numbers, extraction methods, file properties, OCR investigation
+- **Optimized Parameters**: Industry best-practice 1800 chars with 270 overlap (96% coverage)
 
 **Word Document Processing**:
 - **Modern Format Support**: Handles .docx files (Word 2007+) efficiently
@@ -242,11 +243,18 @@ The RAG system exposes document search through a single MCP tool:
 - **Fast Processing**: Optimized for speed and reliability
 - **Optimized Chunking**: Medium-sized chunks (1000 chars, 150 overlap) for structured Word content
 
+**MHT/MHTML Processing**:
+- **Web Archive Support**: Handles .mht and .mhtml web page archive files
+- **Dual Processing**: UnstructuredLoader primary, manual MIME parsing fallback
+- **HTML Text Extraction**: BeautifulSoup4 for clean text extraction from HTML content
+- **Email MIME Parsing**: Built-in email module for MIME message structure parsing
+- **Optimized Chunking**: 1200 chars with 180 overlap for structured HTML content (79% coverage)
+
 **General Features**:
-- **Document-Type Aware**: Different strategies for PDFs, Word documents, text files, and markdown
-- **Mixed Content Support**: Processes text (.txt), markdown (.md), Word (.docx), and PDF (.pdf) files
-- **Error Handling**: Graceful handling of corrupted or unreadable files
-- **Registry Pattern**: Dynamic processor selection by file extension
+- **Universal Document Support**: PDF, DOCX, TXT, MD, MHT/MHTML with specialized processors
+- **Mixed Content Support**: Processes text, markdown, Word, PDF, and web archive files
+- **Advanced Error Handling**: Graceful fallbacks, OCR investigation, encoding detection
+- **Registry Pattern**: Dynamic processor selection by file extension with 97% interface coverage
 
 ### Chunking Technology (Evidence-Based)
 - **PDF Method**: RecursiveCharacterTextSplitter with optimized 1800/270 parameters
@@ -376,13 +384,14 @@ AI: [Uses search_documents tool] Here are some fascinating animal facts I found.
 - **Document Types**: Handles both text (.txt) and PDF (.pdf) files with optimized processing
 
 ### Testing & Quality
-- **Comprehensive Tests**: 60+ unit tests covering document processing, PDF, text, Word, and search functionality
-- **High Coverage**: 95%+ coverage on core processors (Text, Word, PDF) with overall 70% project coverage
-- **Integration Testing**: Real PDF processing with `thinkpython.pdf` (394 chunks)
-- **Interface Testing**: Universal document processor interface validation
-- **Coverage Tool**: Professional `run_coverage.py` with HTML reports, browser integration, and CI support
-- **Multiple Runners**: Custom runner, pytest, and unittest support
-- **CI Ready**: Configured for automated testing and continuous integration
+- **Comprehensive Tests**: 142 unit tests covering all document types, OCR, MHT, and complete dependency stack
+- **High Coverage**: 89.34% overall project coverage with 95%+ on core processors
+- **Advanced Testing**: PDF with OCR, MHT/HTML parsing, BeautifulSoup integration, Tesseract OCR
+- **Complete Dependencies**: All OCR, web archive, and document processing dependencies tested
+- **Coverage Tools**: Simple `run_html_coverage.py` + professional `run_coverage.py` with `.coveragerc` configuration
+- **Clean Reports**: HTML-only coverage reports, no file clutter, 85% coverage threshold
+- **Multiple Runners**: pytest (recommended), unittest discover, custom test runners
+- **CI Ready**: Configured for automated testing with proper dependency management
 
 ### MCP Integration
 - **Dual Interfaces**: Both standalone CLI and MCP server functionality

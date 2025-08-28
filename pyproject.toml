@@ -29,6 +29,11 @@ dependencies = [
     "pypdf>=5.1.0",
     "structlog>=25.4.0",
     "prometheus-client>=0.22.1",
+    "pymupdf>=1.26.4",
+    "langchain-unstructured>=0.1.6",
+    "pytesseract>=0.3.13",
+    "pillow>=11.3.0",
+    "beautifulsoup4>=4.13.5",
 ]
 
 [project.optional-dependencies]

@@ -16,8 +16,9 @@ from langchain_core.documents import Document
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_openai import OpenAIEmbeddings
 
-load_dotenv(Path(__file__).parent / ".env")
-print(f"Loaded .env from {Path(__file__).parent / '.env'}")
+env_path = Path(__file__).parent / ".env"
+load_dotenv(env_path)
+print(f"Loaded .env from {env_path}")
 
 # Configuration
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -25,7 +26,8 @@ DEFAULT_COLLECTION_NAME = "documents"
 
 # Configuration - use same structure as search_similarity.py
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-DATA_DIR = PROJECT_ROOT / "data"
+# DATA_DIR = PROJECT_ROOT / "data"
+DATA_DIR = Path("/Users/ronsonw/Projects/python/kiro_project/data")
 
 
 class ModelVendor(Enum):
@@ -234,6 +236,13 @@ def main():
         print("\\n3. Testing MCP tool wrapper...")
         mcp_result = similarity_search_mcp_tool(
             "What is machine learning?", ModelVendor.GOOGLE, limit=2
+        )
+        print("MCP Tool Result:")
+        print(mcp_result)
+
+        print("\\n4. Testing OCR")
+        mcp_result = similarity_search_mcp_tool(
+            "Voluntarty compliance", ModelVendor.GOOGLE, limit=2
         )
         print("MCP Tool Result:")
         print(mcp_result)

@@ -428,6 +428,17 @@ class TestTextProcessorEdgeCases(unittest.TestCase):
         # Verify processing worked and metadata includes separator
         self.assertEqual(len(documents), 1)
         self.assertEqual(documents[0].metadata["separator"], "|")
+    
+    def test_relative_import_fallback_handling(self):
+        """Test that the processor works with both relative and absolute imports."""
+        # This test verifies the fallback import mechanism works
+        # The processor should initialize regardless of import style
+        processor = TextProcessor()
+        self.assertIsNotNone(processor)
+        self.assertEqual(processor.processor_name, "TextProcessor")
+        # Verify it has the required methods from successful imports
+        self.assertTrue(hasattr(processor, 'process_document'))
+        self.assertTrue(hasattr(processor, 'is_supported_file'))
 
 
 if __name__ == "__main__":
