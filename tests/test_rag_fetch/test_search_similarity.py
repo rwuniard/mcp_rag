@@ -21,7 +21,6 @@ from rag_fetch.search_similarity import (
     ensure_chroma_directory,
     get_cached_vectorstore,
     load_embedding_model,
-    refresh_vectorstore_data,
     search_similarity,
     similarity_search_mcp_tool,
 )
@@ -268,62 +267,6 @@ class TestSearchSimilarityErrorHandling(unittest.TestCase):
         self.assertIn("Database error", result["error"])
 
 
-class TestVectorstoreRefresh(unittest.TestCase):
-    """Test cases for vectorstore refresh functionality."""
-
-    def test_refresh_vectorstore_data_success(self):
-        """Test successful vectorstore data refresh."""
-        # Mock vectorstore with collection
-        mock_vectorstore = Mock()
-        mock_collection = Mock()
-        mock_vectorstore._collection = mock_collection
-        
-        # Test refresh
-        result = refresh_vectorstore_data(mock_vectorstore)
-        
-        # Verify refresh was called and returned True
-        mock_collection.get.assert_called_once_with(limit=1)
-        self.assertTrue(result)
-
-    def test_refresh_vectorstore_data_no_collection(self):
-        """Test vectorstore refresh when no collection exists."""
-        # Mock vectorstore without collection
-        mock_vectorstore = Mock()
-        mock_vectorstore._collection = None
-        
-        # Test refresh
-        result = refresh_vectorstore_data(mock_vectorstore)
-        
-        # Should return False when no collection
-        self.assertFalse(result)
-
-    def test_refresh_vectorstore_data_missing_attribute(self):
-        """Test vectorstore refresh when _collection attribute doesn't exist."""
-        # Mock vectorstore without _collection attribute
-        mock_vectorstore = Mock(spec=[])  # Empty spec means no attributes
-        
-        # Test refresh
-        result = refresh_vectorstore_data(mock_vectorstore)
-        
-        # Should return False when attribute doesn't exist
-        self.assertFalse(result)
-
-    @patch('builtins.print')
-    def test_refresh_vectorstore_data_exception(self, mock_print):
-        """Test vectorstore refresh exception handling."""
-        # Mock vectorstore that raises exception
-        mock_vectorstore = Mock()
-        mock_collection = Mock()
-        mock_collection.get.side_effect = Exception("Refresh failed")
-        mock_vectorstore._collection = mock_collection
-        
-        # Test refresh
-        result = refresh_vectorstore_data(mock_vectorstore)
-        
-        # Should return False on exception and print warning
-        self.assertFalse(result)
-        mock_print.assert_called_once_with("Warning: Failed to refresh vectorstore data: Refresh failed")
-
 
 class TestCachedVectorstore(unittest.TestCase):
     """Test cases for cached vectorstore functionality."""
@@ -341,13 +284,11 @@ class TestCachedVectorstore(unittest.TestCase):
         rag_fetch.search_similarity._vectorstore_cache = {}
 
     @patch('rag_fetch.search_similarity.load_vectorstore')
-    @patch('rag_fetch.search_similarity.refresh_vectorstore_data')
-    def test_get_cached_vectorstore_first_call(self, mock_refresh, mock_load_vectorstore):
+    def test_get_cached_vectorstore_first_call(self, mock_load_vectorstore):
         """Test cached vectorstore on first call."""
         # Mock vectorstore
         mock_vectorstore = Mock()
         mock_load_vectorstore.return_value = mock_vectorstore
-        mock_refresh.return_value = True
         
         # First call should create new vectorstore
         result = get_cached_vectorstore(ModelVendor.GOOGLE)
@@ -362,9 +303,8 @@ class TestCachedVectorstore(unittest.TestCase):
         self.assertIn(cache_key, rag_fetch.search_similarity._vectorstore_cache)
 
     @patch('rag_fetch.search_similarity.load_vectorstore')
-    @patch('rag_fetch.search_similarity.refresh_vectorstore_data')
     @patch('time.time')
-    def test_get_cached_vectorstore_cache_hit(self, mock_time, mock_refresh, mock_load_vectorstore):
+    def test_get_cached_vectorstore_cache_hit(self, mock_time, mock_load_vectorstore):
         """Test cached vectorstore cache hit (within TTL)."""
         # Mock time to control TTL
         mock_time.return_value = 1000.0
@@ -372,7 +312,6 @@ class TestCachedVectorstore(unittest.TestCase):
         # Mock vectorstore
         mock_vectorstore = Mock()
         mock_load_vectorstore.return_value = mock_vectorstore
-        mock_refresh.return_value = True
         
         # First call
         result1 = get_cached_vectorstore(ModelVendor.GOOGLE)
@@ -383,20 +322,15 @@ class TestCachedVectorstore(unittest.TestCase):
         # Should have used cached version
         mock_load_vectorstore.assert_called_once()  # Only called once
         self.assertEqual(result1, result2)
-        
-        # Refresh should only be called on cache hit (not on initial load)
-        self.assertEqual(mock_refresh.call_count, 1)
 
     @patch('rag_fetch.search_similarity.load_vectorstore')
-    @patch('rag_fetch.search_similarity.refresh_vectorstore_data')
     @patch('time.time')
-    def test_get_cached_vectorstore_cache_expired(self, mock_time, mock_refresh, mock_load_vectorstore):
+    def test_get_cached_vectorstore_cache_expired(self, mock_time, mock_load_vectorstore):
         """Test cached vectorstore cache miss (TTL expired)."""
         # Mock different vectorstore instances
         mock_vectorstore1 = Mock()
         mock_vectorstore2 = Mock()
         mock_load_vectorstore.side_effect = [mock_vectorstore1, mock_vectorstore2]
-        mock_refresh.return_value = True
         
         # First call at time 1000
         mock_time.return_value = 1000.0
@@ -412,15 +346,13 @@ class TestCachedVectorstore(unittest.TestCase):
         self.assertEqual(result2, mock_vectorstore2)
 
     @patch('rag_fetch.search_similarity.load_vectorstore')
-    @patch('rag_fetch.search_similarity.refresh_vectorstore_data')
-    def test_get_cached_vectorstore_force_refresh(self, mock_refresh, mock_load_vectorstore):
+    def test_get_cached_vectorstore_force_refresh(self, mock_load_vectorstore):
         """Test cached vectorstore with force refresh."""
         # Mock different vectorstore instances
         mock_vectorstore1 = Mock()
         mock_vectorstore2 = Mock()
         mock_load_vectorstore.side_effect = [mock_vectorstore1, mock_vectorstore2]
-        mock_refresh.return_value = True
-        
+                
         # First call
         result1 = get_cached_vectorstore(ModelVendor.GOOGLE)
         
@@ -433,15 +365,13 @@ class TestCachedVectorstore(unittest.TestCase):
         self.assertEqual(result2, mock_vectorstore2)
 
     @patch('rag_fetch.search_similarity.load_vectorstore')
-    @patch('rag_fetch.search_similarity.refresh_vectorstore_data')
-    def test_get_cached_vectorstore_different_collections(self, mock_refresh, mock_load_vectorstore):
+    def test_get_cached_vectorstore_different_collections(self, mock_load_vectorstore):
         """Test cached vectorstore with different collection names."""
         # Mock vectorstore
         mock_vectorstore1 = Mock()
         mock_vectorstore2 = Mock()
         mock_load_vectorstore.side_effect = [mock_vectorstore1, mock_vectorstore2]
-        mock_refresh.return_value = True
-        
+                
         # Calls with different collections should create separate cache entries
         result1 = get_cached_vectorstore(ModelVendor.GOOGLE, "collection1")
         result2 = get_cached_vectorstore(ModelVendor.GOOGLE, "collection2")
@@ -559,6 +489,276 @@ class TestMainFunction(unittest.TestCase):
         mock_print.assert_any_call("Make sure you have:")
         mock_print.assert_any_call("1. GOOGLE_API_KEY set in your .env file")
         mock_print.assert_any_call("2. Documents stored in the ChromaDB database")
+
+
+class TestCollectionNameConfiguration(unittest.TestCase):
+    """Test cases for collection name configuration functionality."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        # Store original environment variables
+        self.original_env = dict(os.environ)
+
+    def tearDown(self):
+        """Clean up after each test."""
+        # Restore original environment variables
+        os.environ.clear()
+        os.environ.update(self.original_env)
+
+    @patch.dict(os.environ, {"CHROMADB_COLLECTION_NAME": "search_custom_collection"})
+    def test_default_collection_name_from_env(self):
+        """Test DEFAULT_COLLECTION_NAME reads from environment variable."""
+        # Import the module to trigger environment loading
+        import importlib
+        import rag_fetch.search_similarity
+        importlib.reload(rag_fetch.search_similarity)
+        
+        from rag_fetch.search_similarity import DEFAULT_COLLECTION_NAME
+        
+        self.assertEqual(DEFAULT_COLLECTION_NAME, "search_custom_collection")
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_default_collection_name_fallback(self):
+        """Test DEFAULT_COLLECTION_NAME falls back to 'langchain' when env var not set."""
+        # Remove the environment variable if it exists
+        if "CHROMADB_COLLECTION_NAME" in os.environ:
+            del os.environ["CHROMADB_COLLECTION_NAME"]
+            
+        # Import the module to trigger environment loading
+        import importlib
+        import rag_fetch.search_similarity
+        importlib.reload(rag_fetch.search_similarity)
+        
+        from rag_fetch.search_similarity import DEFAULT_COLLECTION_NAME
+        
+        self.assertEqual(DEFAULT_COLLECTION_NAME, "test_rag_kb")
+
+    @patch("rag_fetch.search_similarity.get_chromadb_client")
+    @patch("rag_fetch.search_similarity.load_embedding_model")
+    @patch("rag_fetch.search_similarity.Chroma")
+    def test_load_vectorstore_uses_default_collection_name(self, mock_chroma, mock_embedding, mock_client):
+        """Test load_vectorstore uses DEFAULT_COLLECTION_NAME when collection_name not specified."""
+        # Mock dependencies
+        mock_client.return_value = Mock()
+        mock_embedding.return_value = Mock()
+        mock_vectorstore = Mock()
+        mock_chroma.return_value = mock_vectorstore
+        
+        from rag_fetch.search_similarity import load_vectorstore, ModelVendor, DEFAULT_COLLECTION_NAME
+        
+        # Test function call without collection_name
+        result = load_vectorstore(ModelVendor.GOOGLE)
+        
+        # Verify Chroma was called with DEFAULT_COLLECTION_NAME
+        mock_chroma.assert_called_once()
+        call_args = mock_chroma.call_args[1]
+        self.assertEqual(call_args["collection_name"], DEFAULT_COLLECTION_NAME)
+
+    @patch("rag_fetch.search_similarity.get_chromadb_client")
+    @patch("rag_fetch.search_similarity.load_embedding_model")
+    @patch("rag_fetch.search_similarity.Chroma")
+    def test_load_vectorstore_uses_custom_collection_name(self, mock_chroma, mock_embedding, mock_client):
+        """Test load_vectorstore uses provided collection_name when specified."""
+        # Mock dependencies
+        mock_client.return_value = Mock()
+        mock_embedding.return_value = Mock()
+        mock_vectorstore = Mock()
+        mock_chroma.return_value = mock_vectorstore
+        
+        from rag_fetch.search_similarity import load_vectorstore, ModelVendor
+        
+        custom_collection = "search_custom_collection"
+        
+        # Test function call with custom collection_name
+        result = load_vectorstore(ModelVendor.GOOGLE, collection_name=custom_collection)
+        
+        # Verify Chroma was called with custom collection name
+        mock_chroma.assert_called_once()
+        call_args = mock_chroma.call_args[1]
+        self.assertEqual(call_args["collection_name"], custom_collection)
+
+    @patch("rag_fetch.search_similarity.load_vectorstore")
+    def test_get_cached_vectorstore_passes_collection_name(self, mock_load_vectorstore):
+        """Test get_cached_vectorstore passes collection_name to load_vectorstore."""
+        # Mock vectorstore
+        mock_vectorstore = Mock()
+        mock_load_vectorstore.return_value = mock_vectorstore
+        
+        from rag_fetch.search_similarity import get_cached_vectorstore, ModelVendor
+        
+        custom_collection = "cached_test_collection"
+        
+        # Test function call with custom collection
+        result = get_cached_vectorstore(ModelVendor.GOOGLE, collection_name=custom_collection)
+        
+        # Verify load_vectorstore was called with custom collection name
+        mock_load_vectorstore.assert_called_with(ModelVendor.GOOGLE, custom_collection)
+
+    @patch("rag_fetch.search_similarity.get_cached_vectorstore")
+    def test_similarity_search_mcp_tool_passes_collection_name(self, mock_get_cached):
+        """Test similarity_search_mcp_tool passes collection parameter to get_cached_vectorstore."""
+        # Mock vectorstore
+        mock_vectorstore = Mock()
+        mock_get_cached.return_value = mock_vectorstore
+        
+        # Mock search result
+        with patch("rag_fetch.search_similarity.search_similarity_with_json_result") as mock_search:
+            mock_search.return_value = {
+                "query": "test",
+                "results": [],
+                "total_results": 0,
+                "status": "success"
+            }
+            
+            from rag_fetch.search_similarity import similarity_search_mcp_tool, ModelVendor
+            
+            custom_collection = "mcp_test_collection"
+            
+            # Test function call with collection parameter
+            result = similarity_search_mcp_tool(
+                "test query", 
+                ModelVendor.GOOGLE, 
+                limit=5, 
+                collection=custom_collection
+            )
+            
+            # Verify get_cached_vectorstore was called with collection name
+            mock_get_cached.assert_called_once_with(ModelVendor.GOOGLE, custom_collection)
+
+    @patch("rag_fetch.search_similarity.get_chromadb_client")
+    @patch("rag_fetch.search_similarity.load_embedding_model")
+    @patch("rag_fetch.search_similarity.Chroma")
+    @patch("rag_fetch.search_similarity.DEFAULT_COLLECTION_NAME", "env_search_collection")
+    def test_load_vectorstore_environment_integration(self, mock_chroma, mock_embedding, mock_client):
+        """Test load_vectorstore with environment variable integration."""
+        # Mock dependencies
+        mock_client.return_value = Mock()
+        mock_embedding.return_value = Mock()
+        mock_vectorstore = Mock()
+        mock_chroma.return_value = mock_vectorstore
+        
+        from rag_fetch.search_similarity import load_vectorstore, ModelVendor
+        
+        # Test function call without collection_name (should use env var)
+        result = load_vectorstore(ModelVendor.GOOGLE)
+        
+        # Verify Chroma was called with environment variable value
+        mock_chroma.assert_called_once()
+        call_args = mock_chroma.call_args[1]
+        self.assertEqual(call_args["collection_name"], "env_search_collection")
+
+    def test_load_vectorstore_parameter_signature(self):
+        """Test that load_vectorstore function signature includes collection_name parameter."""
+        import inspect
+        from rag_fetch.search_similarity import load_vectorstore
+        
+        signature = inspect.signature(load_vectorstore)
+        parameters = signature.parameters
+        
+        # Verify collection_name parameter exists and is optional
+        self.assertIn("collection_name", parameters)
+        self.assertEqual(parameters["collection_name"].default, None)
+        self.assertEqual(parameters["collection_name"].annotation, str)
+
+    def test_similarity_search_mcp_tool_collection_parameter_signature(self):
+        """Test that similarity_search_mcp_tool function signature includes collection parameter."""
+        import inspect
+        from rag_fetch.search_similarity import similarity_search_mcp_tool
+        
+        signature = inspect.signature(similarity_search_mcp_tool)
+        parameters = signature.parameters
+        
+        # Verify collection parameter exists and is optional
+        self.assertIn("collection", parameters)
+        self.assertEqual(parameters["collection"].default, None)
+        self.assertEqual(parameters["collection"].annotation, str)
+
+    @patch("rag_fetch.search_similarity.get_cached_vectorstore")
+    @patch("rag_fetch.search_similarity.search_similarity_with_json_result")
+    def test_cache_key_uses_collection_name(self, mock_search, mock_get_cached):
+        """Test that cache key includes collection name for proper isolation."""
+        # Clear cache
+        import rag_fetch.search_similarity
+        rag_fetch.search_similarity._vectorstore_cache = {}
+        
+        # Mock vectorstore
+        mock_vectorstore = Mock()
+        mock_get_cached.return_value = mock_vectorstore
+        
+        # Mock search result
+        mock_search.return_value = {
+            "query": "test",
+            "results": [],
+            "total_results": 0,
+            "status": "success"
+        }
+        
+        from rag_fetch.search_similarity import similarity_search_mcp_tool, ModelVendor
+        
+        # Call with different collections
+        result1 = similarity_search_mcp_tool("test", ModelVendor.GOOGLE, collection="collection1")
+        result2 = similarity_search_mcp_tool("test", ModelVendor.GOOGLE, collection="collection2")
+        
+        # Verify get_cached_vectorstore was called with different collection names
+        self.assertEqual(mock_get_cached.call_count, 2)
+        calls = mock_get_cached.call_args_list
+        self.assertEqual(calls[0][0][1], "collection1")  # First call with collection1
+        self.assertEqual(calls[1][0][1], "collection2")  # Second call with collection2
+
+
+class TestCollectionNameConsistency(unittest.TestCase):
+    """Test cases for collection name consistency between services."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        # Store original environment variables
+        self.original_env = dict(os.environ)
+
+    def tearDown(self):
+        """Clean up after each test."""
+        # Restore original environment variables
+        os.environ.clear()
+        os.environ.update(self.original_env)
+
+    @patch.dict(os.environ, {"CHROMADB_COLLECTION_NAME": "consistency_test_collection"})
+    def test_both_services_use_same_collection_name(self):
+        """Test that both services use the same collection name from environment."""
+        # Reload both modules to pick up environment variable
+        import importlib
+        import rag_store.store_embeddings
+        import rag_fetch.search_similarity
+        importlib.reload(rag_store.store_embeddings)
+        importlib.reload(rag_fetch.search_similarity)
+        
+        from rag_store.store_embeddings import DEFAULT_COLLECTION_NAME as store_collection
+        from rag_fetch.search_similarity import DEFAULT_COLLECTION_NAME as fetch_collection
+        
+        # Both should use the same environment variable value
+        self.assertEqual(store_collection, "consistency_test_collection")
+        self.assertEqual(fetch_collection, "consistency_test_collection")
+        self.assertEqual(store_collection, fetch_collection)
+
+    @patch.dict(os.environ, {}, clear=True)
+    def test_both_services_use_same_fallback_collection(self):
+        """Test that both services use the same fallback collection name."""
+        # Remove environment variable if it exists
+        if "CHROMADB_COLLECTION_NAME" in os.environ:
+            del os.environ["CHROMADB_COLLECTION_NAME"]
+            
+        # Reload both modules to pick up cleared environment
+        import importlib
+        import rag_store.store_embeddings
+        import rag_fetch.search_similarity
+        importlib.reload(rag_store.store_embeddings)
+        importlib.reload(rag_fetch.search_similarity)
+        
+        from rag_store.store_embeddings import DEFAULT_COLLECTION_NAME as store_collection
+        from rag_fetch.search_similarity import DEFAULT_COLLECTION_NAME as fetch_collection
+        
+        # Both should use the same fallback value
+        self.assertEqual(store_collection, "test_rag_kb")
+        self.assertEqual(fetch_collection, "test_rag_kb")
+        self.assertEqual(store_collection, fetch_collection)
 
 
 if __name__ == "__main__":

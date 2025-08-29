@@ -39,12 +39,12 @@ logger.info(
 # Configuration - use same structure as search_similarity.py
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
-DEFAULT_COLLECTION_NAME = "langchain"
 
 # ChromaDB server configuration
 CHROMADB_HOST = os.getenv("CHROMADB_HOST", "localhost")
 CHROMADB_PORT = int(os.getenv("CHROMADB_PORT", "8000"))
 CHROMADB_URL = f"http://{CHROMADB_HOST}:{CHROMADB_PORT}"
+DEFAULT_COLLECTION_NAME = os.getenv("CHROMADB_COLLECTION_NAME", "langchain")
 
 
 class ModelVendor(Enum):

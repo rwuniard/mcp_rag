@@ -27,6 +27,7 @@ OPENAI_API_KEY=your_openai_api_key_here
 # ChromaDB Server Configuration
 CHROMADB_HOST=localhost
 CHROMADB_PORT=8000
+CHROMADB_COLLECTION_NAME=langchain
 
 # Optional for OCR debugging
 # OCR_INVESTIGATE=false
