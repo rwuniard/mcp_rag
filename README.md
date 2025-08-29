@@ -63,7 +63,7 @@ rag-mcp-server
 
 ## Testing & Coverage
 
-The project includes a comprehensive test suite with **89.34% coverage** and complete dependency management:
+The project includes a comprehensive test suite with **86% coverage** and complete dependency management:
 
 ### Quick Coverage Commands
 ```bash
@@ -85,11 +85,12 @@ python run_coverage.py --html-only --open
 - **Complete Dependencies**: All OCR, MHT, and document processing dependencies installed
 
 ### Current Coverage Status
-- **Overall Project**: **89.34% coverage** (Above 85% requirement ✅)
+- **Overall Project**: **86% coverage** (Above 85% requirement ✅)
 - **Core Processors**: 95%+ coverage (PDF: 96%, Text: 95%, Word: 93%)
 - **Document Processing**: 97% coverage with universal processor interface
-- **142 Unit Tests**: Complete test coverage including OCR, BeautifulSoup, and Tesseract integration
+- **168 Unit Tests**: Complete test coverage including OCR, BeautifulSoup, and Tesseract integration
 - **All Dependencies**: PyMuPDF, pytesseract, Pillow, BeautifulSoup4, langchain-unstructured
+- **Coverage Tools**: Both simple (`run_html_coverage.py`) and full-featured (`run_coverage.py`) scripts
 
 ## Development Commands
 
@@ -115,12 +116,12 @@ python run_coverage.py --html-only --open
 - `rag-mcp-server` - Direct access to MCP server
 
 **Testing & Quality**:
-- `python run_html_coverage.py --open` - Run tests with HTML coverage and open report
+- `python run_html_coverage.py --open` - Run tests with HTML coverage and open report (recommended)
 - `uv run pytest --cov=src --cov-report=html` - Direct pytest with HTML coverage  
-- `python run_coverage.py --html-only` - Legacy full-featured coverage tool
-- `python tests/run_tests.py` - Run all 142 unit tests using unittest
-- `uv run pytest tests/test_rag_store/ -v` - Test RAG Store (121 tests)
-- `uv run pytest tests/test_rag_fetch/ -v` - Test RAG Fetch (21 tests)
+- `python run_coverage.py --html-only --open` - Full-featured coverage tool with statistics
+- `python run_coverage.py --console-only` - Console-only coverage report
+- `uv run pytest tests/test_rag_store/ -v` - Test RAG Store service
+- `uv run pytest tests/test_rag_fetch/ -v` - Test RAG Fetch service
 
 ## Architecture
 
@@ -226,7 +227,7 @@ The MCP server now provides real-time data access without requiring restarts:
 - ✅ **Server-Based Storage**: ChromaDB server provides centralized, persistent data storage
 - ✅ **Production Ready**: Complete document-to-search pipeline verified and tested
 - ✅ **Professional Structure**: Modern Python package with src/tests organization
-- ✅ **Comprehensive Testing**: 142 unit tests with complete dependency coverage (89.34%)
+- ✅ **Comprehensive Testing**: 168 unit tests with complete dependency coverage (86%)
 - ✅ **Dual Entry Points**: Both CLI and MCP server interfaces
 - ✅ **Real-time Data Access**: MCP server sees new documents immediately without restarts
 - ✅ **Persistent Connections**: Cached HTTP connections for optimal performance
@@ -299,6 +300,7 @@ GOOGLE_API_KEY=your_google_api_key_here
 # OPENAI_API_KEY=your_openai_api_key_here  # Optional, for OpenAI embeddings
 CHROMADB_HOST=localhost
 CHROMADB_PORT=8000
+CHROMADB_COLLECTION_NAME=langchain
 ```
 
 **src/rag_store/.env**:
@@ -307,6 +309,7 @@ GOOGLE_API_KEY=your_google_api_key_here
 # OPENAI_API_KEY=your_openai_api_key_here  # Optional, for OpenAI embeddings
 CHROMADB_HOST=localhost
 CHROMADB_PORT=8000
+CHROMADB_COLLECTION_NAME=langchain
 ```
 
 ### IDE Configuration
@@ -424,13 +427,13 @@ AI: [Uses search_documents tool] Here are some fascinating animal facts I found.
 - **Server Management**: Easy start/stop/status commands via `./scripts/chromadb-server.sh`
 
 ### Testing & Quality
-- **Comprehensive Tests**: 142 unit tests covering all document types, OCR, MHT, and complete dependency stack
-- **High Coverage**: 89.34% overall project coverage with 95%+ on core processors
+- **Comprehensive Tests**: 168 unit tests covering all document types, OCR, MHT, and complete dependency stack
+- **High Coverage**: 86% overall project coverage with 95%+ on core processors
 - **Advanced Testing**: PDF with OCR, MHT/HTML parsing, BeautifulSoup integration, Tesseract OCR
 - **Complete Dependencies**: All OCR, web archive, and document processing dependencies tested
-- **Coverage Tools**: Simple `run_html_coverage.py` + professional `run_coverage.py` with `.coveragerc` configuration
+- **Coverage Tools**: Simple `run_html_coverage.py` (pytest-based) + professional `run_coverage.py` (unittest-based)
 - **Clean Reports**: HTML-only coverage reports, no file clutter, 85% coverage threshold
-- **Multiple Runners**: pytest (recommended), unittest discover, custom test runners
+- **Multiple Runners**: pytest (recommended), unittest discover, both with uv integration
 - **CI Ready**: Configured for automated testing with proper dependency management
 
 ### MCP Integration

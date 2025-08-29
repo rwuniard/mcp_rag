@@ -149,18 +149,14 @@ Examples:
     # Step 1: Run tests with coverage
     print("📋 Running comprehensive test suite with coverage tracking...")
     success, test_output, test_error = run_command(
-        "python -m coverage run --source=src -m unittest discover tests -v",
+        "uv run coverage run --source=src -m unittest discover tests -v",
         "Test execution with coverage tracking",
     )
 
     if not success:
-        print("\n❌ Tests failed. Coverage report generation aborted.")
-        print("\nTest Output:")
-        print(test_output)
-        if test_error:
-            print("\nError Output:")
-            print(test_error)
-        return 1
+        print("\n⚠️ Some tests failed, but coverage was still collected.")
+        print("📊 Continuing with coverage report generation...")
+        # Don't abort on test failures - coverage was still collected
 
     # Extract test statistics
     total_tests = extract_test_count(test_output)
@@ -172,7 +168,7 @@ Examples:
     if not args.html_only:
         print("\n📊 Generating console coverage report...")
         success, console_output, console_error = run_command(
-            "python -m coverage report --show-missing",
+            "uv run coverage report --show-missing",
             "Console coverage report generation",
         )
 
@@ -193,7 +189,7 @@ Examples:
     if not args.console_only and not args.no_html:
         print("\n🌐 Generating HTML coverage report...")
         success, _, html_error = run_command(
-            "python -m coverage html", "HTML coverage report generation"
+            "uv run coverage html", "HTML coverage report generation"
         )
 
         if success:

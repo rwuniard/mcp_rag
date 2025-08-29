@@ -24,15 +24,15 @@ print(f"Loaded .env from {env_path}")
 
 # Configuration
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-DEFAULT_COLLECTION_NAME = "langchain"
 
 # ChromaDB server configuration
 CHROMADB_HOST = os.getenv("CHROMADB_HOST", "localhost")
 CHROMADB_PORT = int(os.getenv("CHROMADB_PORT", "8000"))
 CHROMADB_URL = f"http://{CHROMADB_HOST}:{CHROMADB_PORT}"
+DEFAULT_COLLECTION_NAME = os.getenv("CHROMADB_COLLECTION_NAME", "langchain")
 
 # Legacy file-based configuration (fallback)
-DATA_DIR = Path("/Users/ronsonw/Projects/python/kiro_project/data")
+DATA_DIR = PROJECT_ROOT / "data"
 
 # Cache management for vectorstore connections
 _vectorstore_cache = {}
