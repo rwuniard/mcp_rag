@@ -8,7 +8,7 @@ RAG Fetch is the **search microservice** that:
 - Performs semantic similarity search across stored documents
 - Returns MCP-compatible JSON responses for AI assistants
 - Provides both CLI and MCP server interfaces
-- Integrates with ChromaDB vector databases
+- Connects to ChromaDB server via HTTP client
 
 ## 🚀 Quick Start
 
@@ -21,20 +21,32 @@ GOOGLE_API_KEY=your_google_api_key_here
 
 # Optional for OpenAI embeddings
 OPENAI_API_KEY=your_openai_api_key_here
+
+# ChromaDB Server Configuration
+CHROMADB_HOST=localhost
+CHROMADB_PORT=8000
 ```
 
-### 2. Ensure Documents are Indexed
+### 2. Start ChromaDB Server
+
+Start the ChromaDB server before searching:
+```bash
+# Start ChromaDB server (from project root)
+./scripts/chromadb-server.sh start
+
+# Check server health
+./scripts/chromadb-server.sh health
+```
+
+### 3. Ensure Documents are Indexed
 
 Make sure you have documents stored by the RAG Store service:
 ```bash
-# Check if vector database exists
-ls ../../../data/chroma_db_google/
-
-# If empty, run RAG Store first
+# Store documents to ChromaDB server
 python main.py store
 ```
 
-### 3. Search Documents
+### 4. Search Documents
 
 ```bash
 # From project root - CLI search
@@ -65,21 +77,71 @@ src/rag_fetch/
 ## 🔧 Components
 
 ### **Search Similarity** (`search_similarity.py`)
-- **Purpose**: Core semantic search functionality
-- **Technology**: ChromaDB + LangChain + Google/OpenAI embeddings
-- **Features**: Similarity search with scores, MCP-compatible JSON responses
+- **Purpose**: Core semantic search functionality with real-time data access
+- **Technology**: ChromaDB HTTP Client + LangChain + Google/OpenAI embeddings
+- **Features**: Similarity search with scores, MCP-compatible JSON responses, cached connections
 - **Models**: Google `text-embedding-004` (default), OpenAI `text-embedding-ada-002`
+- **Architecture**: Client-server with persistent HTTP connections to ChromaDB
 
 ### **MCP Server** (`mcp_server.py`)
 - **Purpose**: Model Context Protocol server for AI assistant integration
 - **Framework**: FastMCP
 - **Tools**: `search_documents(query, limit)` 
 - **Response**: Structured JSON with content, metadata, and relevance scores
+- **Real-time Data**: Server architecture ensures immediate access to new documents
 
 ### **CLI Interface** (`cli.py`)
 - **Purpose**: Command-line search interface
 - **Usage**: `rag-fetch-cli "search query"`
 - **Features**: Human-friendly output, error handling
+
+## 🔄 Real-time Data Access
+
+### **Problem Solved**
+Previously, when new documents were added to ChromaDB via RAG Store, the MCP server wouldn't see them until manually restarted due to file-based ChromaDB internal caching.
+
+### **Solution Architecture**
+The client-server architecture provides **real-time data freshness** with three key components:
+
+#### **1. ChromaDB HTTP Client**
+```python
+def get_chromadb_client() -> chromadb.Client:
+    """Connect to ChromaDB server via HTTP."""
+    client = chromadb.HttpClient(host=CHROMADB_HOST, port=CHROMADB_PORT)
+    client.heartbeat()  # Test connection
+    return client
+```
+
+#### **2. Cached HTTP Connections**
+```python
+def get_cached_vectorstore(model_vendor: ModelVendor, collection_name: str = None):
+    """Get vectorstore with cached HTTP connections."""
+    # 30-second TTL for connection performance
+    # Server ensures data freshness automatically
+    # Cached connections per model/collection
+```
+
+#### **3. Server-Guaranteed Freshness**
+```python
+def similarity_search_mcp_tool(query: str, ...):
+    """MCP tool with server-guaranteed fresh data."""
+    # Uses cached HTTP connection to ChromaDB server
+    vectorstore = get_cached_vectorstore(model_vendor, collection)
+    # Server is single source of truth for data
+```
+
+### **Performance Characteristics**
+- **HTTP Client**: Persistent connections with minimal overhead
+- **Connection Caching**: 30-second TTL reduces connection establishment costs
+- **Memory Impact**: Minimal (single cached connection per model/collection)
+- **Error Handling**: Clear error messages if server unavailable
+
+### **Benefits**
+- ✅ **Zero Downtime**: No MCP server restarts needed
+- ✅ **Always Fresh**: Server ensures all clients see latest data immediately
+- ✅ **Server Architecture**: Centralized ChromaDB server with HTTP API
+- ✅ **Docker Integration**: Easy server management with Docker Compose
+- ✅ **Production Ready**: Comprehensive error handling and monitoring
 
 ## 🔍 Search Functionality
 
@@ -178,6 +240,10 @@ GOOGLE_API_KEY=your_google_api_key
 
 # OpenAI (alternative)
 OPENAI_API_KEY=your_openai_api_key
+
+# ChromaDB Server
+CHROMADB_HOST=localhost
+CHROMADB_PORT=8000
 ```
 
 ### **Model Selection**
@@ -191,9 +257,10 @@ ModelVendor.GOOGLE
 ModelVendor.OPENAI
 ```
 
-### **Database Paths**
-- **Google**: `../../../data/chroma_db_google/`
-- **OpenAI**: `../../../data/chroma_db_openai/`
+### **ChromaDB Server**
+- **Server URL**: `http://localhost:8000`
+- **Data Storage**: `../../../data/chroma_data/`
+- **Management**: `./scripts/chromadb-server.sh`
 
 ## 🔧 API Reference
 
@@ -209,8 +276,12 @@ documents = search_similarity(query, vectorstore, k=6)
 # Search with JSON response
 json_result = search_similarity_with_json_result(query, vectorstore, number_result=6)
 
-# MCP tool wrapper
+# MCP tool wrapper (with auto-refresh)
 mcp_response = similarity_search_mcp_tool(query, ModelVendor.GOOGLE, limit=6)
+
+# Auto-refresh functions (new in latest version)
+success = refresh_vectorstore_data(vectorstore)
+cached_vectorstore = get_cached_vectorstore(ModelVendor.GOOGLE)
 ```
 
 ### **Search Parameters**
@@ -266,14 +337,14 @@ for doc in result["results"]:
 RAG Fetch works as an **independent search microservice**:
 
 - **Input**: Search queries via CLI, MCP, or API
-- **Data Source**: ChromaDB vector databases (created by RAG Store)
+- **Data Source**: ChromaDB server (populated by RAG Store)
 - **Output**: Structured JSON responses with content and metadata
 
 **Microservices Flow**:
 ```
-AI Assistant → MCP Server → RAG Fetch → ChromaDB → Search Results
+AI Assistant → MCP Server → RAG Fetch → ChromaDB Server → Search Results
      ↓
-User Query → CLI → RAG Fetch → ChromaDB → Human-friendly Output
+User Query → CLI → RAG Fetch → ChromaDB Server → Human-friendly Output
 ```
 
 ## 🧪 Quality Features
@@ -360,10 +431,13 @@ python-dotenv = ">=1.1.1"
 
 ### **Common Issues**
 
-**"Database not found" error**:
+**"Cannot connect to ChromaDB server" error**:
 ```bash
-# Solution: Run RAG Store first to create the database
-python main.py store
+# Solution: Start ChromaDB server first
+./scripts/chromadb-server.sh start
+
+# Check server health
+./scripts/chromadb-server.sh health
 ```
 
 **"API key required" error**:
@@ -374,10 +448,92 @@ echo "GOOGLE_API_KEY=your_key_here" >> .env
 
 **No search results**:
 ```bash
-# Check if documents are stored
-ls ../../../data/chroma_db_google/
-# If empty, run document ingestion first
+# Check if ChromaDB server is running
+./scripts/chromadb-server.sh status
+
+# If no documents, run document ingestion
+python main.py store
 ```
+
+### **Server Connection Troubleshooting**
+
+**MCP server not seeing new documents**:
+```bash
+# Check ChromaDB server status
+./scripts/chromadb-server.sh health
+
+# Test search directly
+python src/rag_fetch/search_similarity.py
+# Should show latest documents immediately
+```
+
+**Connection timeout errors**:
+```bash
+# Check if server is running
+./scripts/chromadb-server.sh status
+
+# Check server logs for issues
+./scripts/chromadb-server.sh logs
+
+# Restart server if needed
+./scripts/chromadb-server.sh restart
+```
+
+**Performance issues**:
+```bash
+# Check connection cache TTL (default 30 seconds)
+# Server handles data freshness, cache optimizes connections
+```
+
+**Memory usage increasing over time**:
+```bash
+# Connection cache automatically manages memory:
+python -c "from src.rag_fetch.search_similarity import _vectorstore_cache; _vectorstore_cache.clear()"
+```
+
+### **Development & Testing**
+
+**Running server-specific tests**:
+```bash
+# Test server connection
+python -c "from src.rag_fetch.search_similarity import get_chromadb_client; client = get_chromadb_client(); print('✅ Connected')"
+
+# Test caching system
+python -m pytest tests/test_rag_fetch/test_search_similarity.py::TestCachedVectorstore -v
+
+# Test MCP tool with server
+python -m pytest tests/test_rag_fetch/test_search_similarity.py -v
+```
+
+**Performance testing**:
+```bash
+# Benchmark search performance
+python -c "
+import time
+from src.rag_fetch.search_similarity import similarity_search_mcp_tool, ModelVendor
+
+start = time.time()
+result = similarity_search_mcp_tool('test query', ModelVendor.GOOGLE, limit=3)
+print(f'Search took: {(time.time() - start) * 1000:.2f}ms')
+"
+```
+
+## 🔄 Version History & Changelog
+
+### **v2.0.0 - Client-Server Architecture** *(Latest)*
+- ✅ **Client-Server Architecture**: ChromaDB server with HTTP clients
+- ✅ **Real-time Data Access**: Server ensures immediate data freshness
+- ✅ **Docker Integration**: Easy ChromaDB server management
+- ✅ **Cached Connections**: 30-second TTL for HTTP connection optimization
+- ✅ **Server Management**: Complete start/stop/status/health commands
+- ✅ **Production Ready**: Robust server-based architecture
+
+### **v1.0.0 - Initial Release**
+- ✅ **Core Search Functionality**: Semantic similarity search with ChromaDB
+- ✅ **MCP Integration**: Model Context Protocol server for AI assistants
+- ✅ **Multi-Model Support**: Google and OpenAI embedding models
+- ✅ **CLI Interface**: Command-line search capabilities
+- ✅ **Production Ready**: Comprehensive error handling and testing
 
 ## 📄 License
 

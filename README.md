@@ -34,9 +34,13 @@ rag-mcp-server
    # Install dependencies (fast with uv)
    uv sync
    
-   # Create environment file
-   cp .env.example .env
-   # Add your GOOGLE_API_KEY to .env
+   # Create environment files from templates
+   cp src/rag_fetch/.env_template src/rag_fetch/.env
+   cp src/rag_store/.env_template src/rag_store/.env
+   # Add your GOOGLE_API_KEY to both .env files
+   
+   # Start ChromaDB server
+   ./scripts/chromadb-server.sh start
    ```
 
 2. **Store Documents**:
@@ -95,6 +99,13 @@ python run_coverage.py --html-only --open
 - `uv run python main.py` - Run CLI application
 - `uv run python mcp_server.py` - Start MCP server
 
+**ChromaDB Server Management**:
+- `./scripts/chromadb-server.sh start` - Start ChromaDB server
+- `./scripts/chromadb-server.sh stop` - Stop ChromaDB server  
+- `./scripts/chromadb-server.sh status` - Check server status
+- `./scripts/chromadb-server.sh health` - Check server health
+- `./scripts/chromadb-server.sh logs` - View server logs
+
 **RAG Operations**:
 - `python main.py store` - Store text and PDF documents to ChromaDB (RAG Store service)
 - `python main.py search "<query>"` - Search documents via CLI (RAG Fetch service)
@@ -140,10 +151,14 @@ mcp_rag/
 │   │   └── test_store_embeddings.py
 │   └── test_rag_fetch/      # RAG Fetch tests
 │       └── test_search_similarity.py
-├── data/                     # Runtime databases (shared)
-│   ├── chroma_db_google/    # Google embeddings database
-│   └── chroma_db_openai/    # OpenAI embeddings database
-├── main.py                   # Convenience router (store|search|server)
+├── data/                     # Runtime databases and server storage
+│   └── chroma_data/         # ChromaDB server persistent storage
+├── scripts/                  # Server management utilities
+│   └── chromadb-server.sh   # ChromaDB server management wrapper
+├── setup_chroma_db/          # ChromaDB server setup and configuration
+│   ├── chromadb-server.sh   # Main ChromaDB server management script
+│   └── docker-compose.yml   # ChromaDB server Docker configuration
+├── main.py                  # Convenience router (store|search|server)
 ├── run_coverage.py          # Full-featured coverage tool (legacy)
 ├── run_html_coverage.py     # Simple HTML coverage runner
 ├── .coveragerc              # Coverage configuration (HTML-only)
@@ -164,6 +179,14 @@ The RAG system exposes document search through a single MCP tool:
 - `search_documents(query, limit)` - Semantic search using Google embeddings
 - Returns JSON with content, metadata, and relevance scores
 - Hardcoded to use Google embeddings for simplicity and consistency
+
+**🔄 Real-time Data Freshness**:
+The MCP server now provides real-time data access without requiring restarts:
+- **Client-Server Architecture**: ChromaDB server ensures all clients see fresh data immediately
+- **Cached Connections**: Persistent HTTP connections cached for 30 seconds for performance
+- **Server-Guaranteed Freshness**: ChromaDB server is single source of truth for all data
+- **Zero Downtime**: No need to restart MCP server when adding new documents
+- **Docker Integration**: Easy ChromaDB server management with Docker Compose
 
 **Core Dependencies**:
 - **ChromaDB** (>=1.0.17) - Vector database for embeddings storage
@@ -193,18 +216,21 @@ The RAG system exposes document search through a single MCP tool:
 ### Current Implementation
 - ✅ **Universal Document Interface**: Extensible processor architecture for multiple document types
 - ✅ **Multi-Format Support**: PDF, Word (DOCX), TXT, and Markdown files with optimized processing
-- ✅ **Document Storage**: Store documents with ChromaDB vector embeddings
+- ✅ **ChromaDB Client-Server Architecture**: Dockerized ChromaDB server with HTTP clients
 - ✅ **PDF Processing**: Advanced RecursiveCharacterTextSplitter with page number tracking
 - ✅ **Word Processing**: Docx2txtLoader with RecursiveCharacterTextSplitter for modern .docx files
 - ✅ **Text Processing**: CharacterTextSplitter optimized for text and markdown files
 - ✅ **Semantic Search**: Query documents using natural language with similarity scoring
 - ✅ **MCP-Compatible Responses**: JSON-formatted responses ready for MCP integration
 - ✅ **Multi-Model Support**: Google and OpenAI embedding models
-- ✅ **Centralized Database**: Unified data storage in `data/` directory
+- ✅ **Server-Based Storage**: ChromaDB server provides centralized, persistent data storage
 - ✅ **Production Ready**: Complete document-to-search pipeline verified and tested
 - ✅ **Professional Structure**: Modern Python package with src/tests organization
 - ✅ **Comprehensive Testing**: 142 unit tests with complete dependency coverage (89.34%)
 - ✅ **Dual Entry Points**: Both CLI and MCP server interfaces
+- ✅ **Real-time Data Access**: MCP server sees new documents immediately without restarts
+- ✅ **Persistent Connections**: Cached HTTP connections for optimal performance
+- ✅ **Docker Integration**: Easy server management with scripts and Docker Compose
 
 ### MCP Response Format
 ```json
@@ -265,10 +291,22 @@ The RAG system exposes document search through a single MCP tool:
 
 ## Environment Setup
 
-Required environment variables in `.env`:
+Required environment variables in module `.env` files:
+
+**src/rag_fetch/.env**:
 ```bash
 GOOGLE_API_KEY=your_google_api_key_here
 # OPENAI_API_KEY=your_openai_api_key_here  # Optional, for OpenAI embeddings
+CHROMADB_HOST=localhost
+CHROMADB_PORT=8000
+```
+
+**src/rag_store/.env**:
+```bash
+GOOGLE_API_KEY=your_google_api_key_here
+# OPENAI_API_KEY=your_openai_api_key_here  # Optional, for OpenAI embeddings
+CHROMADB_HOST=localhost
+CHROMADB_PORT=8000
 ```
 
 ### IDE Configuration
@@ -379,9 +417,11 @@ AI: [Uses search_documents tool] Here are some fascinating animal facts I found.
 - **Type Safety**: Configured for modern Python development with proper imports
 
 ### Database & Storage
-- **ChromaDB**: Vector database with centralized structure in `data/` folder
+- **ChromaDB Server**: Dockerized ChromaDB server running on http://localhost:8000
+- **Client-Server Architecture**: HTTP clients connect to centralized ChromaDB server
 - **Multiple Models**: Support for both Google and OpenAI embeddings
 - **Document Types**: Handles both text (.txt) and PDF (.pdf) files with optimized processing
+- **Server Management**: Easy start/stop/status commands via `./scripts/chromadb-server.sh`
 
 ### Testing & Quality
 - **Comprehensive Tests**: 142 unit tests covering all document types, OCR, MHT, and complete dependency stack

@@ -5,11 +5,13 @@ Provides MCP-compatible JSON responses for document retrieval.
 
 import json
 import os
+import time
 
 from enum import Enum
 from pathlib import Path
 from typing import Any
 
+import chromadb
 from dotenv import load_dotenv
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
@@ -22,17 +24,51 @@ print(f"Loaded .env from {env_path}")
 
 # Configuration
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-DEFAULT_COLLECTION_NAME = "documents"
+DEFAULT_COLLECTION_NAME = "langchain"
 
-# Configuration - use same structure as search_similarity.py
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-# DATA_DIR = PROJECT_ROOT / "data"
+# ChromaDB server configuration
+CHROMADB_HOST = os.getenv("CHROMADB_HOST", "localhost")
+CHROMADB_PORT = int(os.getenv("CHROMADB_PORT", "8000"))
+CHROMADB_URL = f"http://{CHROMADB_HOST}:{CHROMADB_PORT}"
+
+# Legacy file-based configuration (fallback)
 DATA_DIR = Path("/Users/ronsonw/Projects/python/kiro_project/data")
+
+# Cache management for vectorstore connections
+_vectorstore_cache = {}
+_cache_ttl = 30  # 30 seconds TTL for connection caching
 
 
 class ModelVendor(Enum):
     OPENAI = "openai"
     GOOGLE = "google"
+
+
+def get_chromadb_client() -> chromadb.Client:
+    """
+    Get ChromaDB HTTP client - requires server mode.
+    
+    Returns:
+        chromadb.HttpClient: ChromaDB HTTP client
+        
+    Raises:
+        ConnectionError: If cannot connect to ChromaDB server
+    """
+    try:
+        # Connect to ChromaDB server
+        client = chromadb.HttpClient(host=CHROMADB_HOST, port=CHROMADB_PORT)
+        # Test connection
+        client.heartbeat()
+        print(f"✅ Connected to ChromaDB server at {CHROMADB_URL}")
+        return client
+    except Exception as e:
+        raise ConnectionError(
+            f"❌ Cannot connect to ChromaDB server at {CHROMADB_URL}\n"
+            f"Error: {e}\n\n"
+            f"💡 Please ensure ChromaDB server is running:\n"
+            f"   ./scripts/chromadb-server.sh start\n"
+            f"   or: ./setup_chroma_db/chromadb-server.sh start"
+        )
 
 
 def ensure_chroma_directory(model_vendor: ModelVendor) -> Path:
@@ -66,22 +102,66 @@ def load_embedding_model(model_vendor: ModelVendor):
 
 
 def load_vectorstore(model_vendor: ModelVendor, collection_name: str = None):
-    """Load the vectorstore from the persist directory based on the model vendor."""
-    db_path = ensure_chroma_directory(model_vendor)
-    print("DB path: ", db_path)
-    db_path_object = Path(db_path)
-    if not db_path_object.exists():
-        raise FileNotFoundError(f"Database directory not found: {db_path}")
+    """
+    Load the vectorstore using ChromaDB server.
+    
+    Args:
+        model_vendor: Which embedding model to use
+        collection_name: Collection name to use (defaults to 'langchain')
+        
+    Returns:
+        Chroma vectorstore instance connected to ChromaDB server
+        
+    Raises:
+        ConnectionError: If cannot connect to ChromaDB server
+    """
+    # Get ChromaDB client (server mode only)
+    client = get_chromadb_client()
     embedding_function = load_embedding_model(model_vendor)
+    
+    # Use default collection name if not specified
+    collection_name = collection_name or DEFAULT_COLLECTION_NAME
+    
+    # Create vectorstore with HTTP client
+    return Chroma(
+        client=client,
+        collection_name=collection_name,
+        embedding_function=embedding_function,
+    )
 
-    # Use default collection if none specified (same as storage)
-    if collection_name:
-        return Chroma(
-            embedding_function=embedding_function,
-            persist_directory=str(db_path),
-            collection_name=collection_name,
-        )
-    return Chroma(embedding_function=embedding_function, persist_directory=str(db_path))
+
+def get_cached_vectorstore(model_vendor: ModelVendor, collection_name: str = None, force_refresh: bool = False):
+    """
+    Get cached vectorstore connection to ChromaDB server.
+    Server mode ensures data freshness, caching provides performance.
+    
+    Args:
+        model_vendor: Which embedding model to use
+        collection_name: Collection name to search
+        force_refresh: Force creation of new vectorstore connection
+        
+    Returns:
+        Chroma vectorstore instance with persistent server connection
+    """
+    cache_key = f"{model_vendor.value}_{collection_name or 'default'}"
+    current_time = time.time()
+    
+    # Check if we have a cached vectorstore connection that's still valid
+    if (not force_refresh and 
+        cache_key in _vectorstore_cache and 
+        current_time - _vectorstore_cache[cache_key]['timestamp'] < _cache_ttl):
+        
+        # Return cached connection - server ensures data freshness
+        return _vectorstore_cache[cache_key]['vectorstore']
+    
+    # Create new vectorstore connection to server
+    vectorstore = load_vectorstore(model_vendor, collection_name)
+    _vectorstore_cache[cache_key] = {
+        'vectorstore': vectorstore,
+        'timestamp': current_time
+    }
+    
+    return vectorstore
 
 
 def documents_to_mcp_format(
@@ -176,9 +256,10 @@ def similarity_search_mcp_tool(
     collection: str = None,
 ) -> str:
     """
-    MCP tool wrapper for similarity search.
-    Returns JSON string for MCP compatibility.
-
+    MCP tool wrapper for similarity search with ChromaDB server.
+    Uses cached persistent connection to ChromaDB server for optimal performance.
+    Server mode ensures fresh data without connection overhead.
+    
     Args:
         query: Search query
         model_vendor: Which embedding model to use
@@ -189,7 +270,11 @@ def similarity_search_mcp_tool(
         JSON string containing search results
     """
     try:
-        vectorstore = load_vectorstore(model_vendor, collection)
+        # Use cached vectorstore connection to ChromaDB server
+        # Server mode ensures fresh data, caching provides performance
+        vectorstore = get_cached_vectorstore(model_vendor, collection)
+        
+        # Perform search - server guarantees fresh data
         result = search_similarity_with_json_result(query, vectorstore, limit)
         return json.dumps(result, indent=2, ensure_ascii=False)
     except Exception as e:

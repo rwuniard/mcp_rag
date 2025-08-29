@@ -3,6 +3,7 @@ import os
 from enum import Enum
 from pathlib import Path
 
+import chromadb
 from dotenv import load_dotenv
 from langchain.schema import Document
 from langchain.text_splitter import CharacterTextSplitter
@@ -25,17 +26,25 @@ except ImportError:
     from word_processor import WordProcessor
 
 # Load .env from the same directory as this script
-load_dotenv(Path(__file__).parent / ".env")
+env_path = Path(__file__).parent / ".env"
+load_dotenv(env_path)
+print(f"Loaded .env from {env_path}")
 
 # Initialize logger
 logger = get_logger("store_embeddings")
 logger.info(
-    "Environment configuration loaded", env_path=str(Path(__file__).parent / ".env")
+    "Environment configuration loaded", env_path=str(env_path)
 )
 
 # Configuration - use same structure as search_similarity.py
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
+DEFAULT_COLLECTION_NAME = "langchain"
+
+# ChromaDB server configuration
+CHROMADB_HOST = os.getenv("CHROMADB_HOST", "localhost")
+CHROMADB_PORT = int(os.getenv("CHROMADB_PORT", "8000"))
+CHROMADB_URL = f"http://{CHROMADB_HOST}:{CHROMADB_PORT}"
 
 
 class ModelVendor(Enum):
@@ -186,8 +195,38 @@ def load_documents_from_directory(directory_path: Path) -> list[Document]:
     return process_documents_from_directory(directory_path)
 
 
+def get_chromadb_client() -> chromadb.Client:
+    """
+    Get ChromaDB HTTP client - requires server mode.
+    
+    Returns:
+        chromadb.HttpClient: ChromaDB HTTP client
+        
+    Raises:
+        ConnectionError: If cannot connect to ChromaDB server
+    """
+    try:
+        # Connect to ChromaDB server
+        client = chromadb.HttpClient(host=CHROMADB_HOST, port=CHROMADB_PORT)
+        # Test connection
+        client.heartbeat()
+        logger.info(f"Connected to ChromaDB server at {CHROMADB_URL}")
+        return client
+    except Exception as e:
+        error_msg = (
+            f"❌ Cannot connect to ChromaDB server at {CHROMADB_URL}\n"
+            f"Error: {e}\n\n"
+            f"💡 Please ensure ChromaDB server is running:\n"
+            f"   ./scripts/chromadb-server.sh start\n"
+            f"   or: ./setup_chroma_db/chromadb-server.sh start"
+        )
+        logger.error("Failed to connect to ChromaDB server", 
+                    url=CHROMADB_URL, error=str(e))
+        raise ConnectionError(error_msg)
+
+
 def ensure_data_directory(model_vendor: ModelVendor) -> Path:
-    """Ensure the data directory exists for the specified model vendor."""
+    """Ensure the data directory exists for the specified model vendor (legacy)."""
     if model_vendor == ModelVendor.OPENAI:
         db_path = DATA_DIR / "chroma_db_openai"
     elif model_vendor == ModelVendor.GOOGLE:
@@ -222,23 +261,41 @@ def get_text_splitter():
     )
 
 
-def store_to_chroma(documents: list[Document], model_vendor: ModelVendor) -> Chroma:
-    """Store documents to ChromaDB using the centralized data directory."""
-    # Get the database path
-    db_path = ensure_data_directory(model_vendor)
-
-    # Get the embedding model
+def store_to_chroma(documents: list[Document], model_vendor: ModelVendor, collection_name: str = None) -> Chroma:
+    """
+    Store documents to ChromaDB server.
+    
+    Args:
+        documents: List of documents to store
+        model_vendor: Which embedding model to use
+        collection_name: Collection name to use (defaults to 'langchain')
+        
+    Returns:
+        Chroma vectorstore instance connected to ChromaDB server
+        
+    Raises:
+        ConnectionError: If cannot connect to ChromaDB server
+    """
+    # Get ChromaDB client (server mode only)
+    client = get_chromadb_client()
     embedding_model = load_embedding_model(model_vendor)
-
-    # Create vectorstore
+    
+    # Use default collection name if not specified
+    collection_name = collection_name or DEFAULT_COLLECTION_NAME
+    
+    # Create vectorstore with HTTP client
     vectorstore = Chroma.from_documents(
-        documents=documents, embedding=embedding_model, persist_directory=str(db_path)
+        documents=documents,
+        embedding=embedding_model,
+        client=client,
+        collection_name=collection_name,
     )
 
     logger.info(
-        "Documents stored to ChromaDB",
+        "Documents stored to ChromaDB server",
         documents_count=len(documents),
-        database_path=str(db_path),
+        server_url=CHROMADB_URL,
+        collection_name=collection_name,
         model_vendor=model_vendor.value,
     )
     return vectorstore
@@ -286,7 +343,7 @@ def main():
     vectorstore = store_to_chroma(all_documents, ModelVendor.GOOGLE)
     logger.info(
         "Document storage completed successfully",
-        database_location=str(DATA_DIR / "chroma_db_google"),
+        server_url=CHROMADB_URL,
         model_vendor="google",
         total_documents=len(all_documents),
     )

@@ -7,7 +7,7 @@ A professional document processing and storage service for RAG (Retrieval-Augmen
 RAG Store is the **ingestion microservice** that:
 - Processes PDF, Word, MHT/MHTML, text, and markdown documents using universal interface
 - Converts them into vector embeddings
-- Stores them in ChromaDB for semantic search
+- Stores them in ChromaDB server via HTTP client
 - Optimizes chunking for better search quality
 - Supports extensible document processor architecture
 - Features robust error handling with fallback parsing for problematic files
@@ -23,6 +23,10 @@ GOOGLE_API_KEY=your_google_api_key_here
 
 # Optional for OpenAI embeddings
 OPENAI_API_KEY=your_openai_api_key_here
+
+# ChromaDB Server Configuration
+CHROMADB_HOST=localhost
+CHROMADB_PORT=8000
 
 # Optional for OCR debugging
 # OCR_INVESTIGATE=false
@@ -76,7 +80,18 @@ Supported formats:
 - **Text files** (`.txt`) - Processed with CharacterTextSplitter
 - **Markdown files** (`.md`) - Processed with CharacterTextSplitter
 
-### 4. Run Document Ingestion
+### 4. Start ChromaDB Server
+
+Start the ChromaDB server before storing documents:
+```bash
+# Start ChromaDB server (from project root)
+./scripts/chromadb-server.sh start
+
+# Check server health
+./scripts/chromadb-server.sh health
+```
+
+### 5. Run Document Ingestion
 
 ```bash
 # From project root
@@ -243,10 +258,10 @@ The structured logging is designed for:
 - **Integration**: Ready for LangSmith, Grafana, ELK stack, and cloud logging services
 
 ### **Store Embeddings** (`store_embeddings.py`)
-- **Purpose**: Convert documents to vectors and store in ChromaDB using unified interface
+- **Purpose**: Convert documents to vectors and store in ChromaDB server using unified interface
 - **Models**: Google (`text-embedding-004`) and OpenAI support
-- **Database**: ChromaDB with separate collections per model
-- **Output**: Stored in `../../../data/chroma_db_google/` or `chroma_db_openai/`
+- **Architecture**: HTTP client connecting to ChromaDB server
+- **Output**: Stored in ChromaDB server at `http://localhost:8000`
 
 ### **CLI Interface** (`cli.py`)
 - **Purpose**: Command-line entry point for document ingestion
@@ -311,16 +326,18 @@ The structured logging is designed for:
 
 ## 🗄️ Database Structure
 
-Documents are stored in ChromaDB collections:
+Documents are stored in ChromaDB server:
 
 ```
 data/
-├── chroma_db_google/       # Google embeddings
-│   ├── chroma.sqlite3     # SQLite database
-│   └── [collection data]  # Vector data
-└── chroma_db_openai/      # OpenAI embeddings (if used)
-    ├── chroma.sqlite3
-    └── [collection data]
+└── chroma_data/          # ChromaDB server persistent storage
+    ├── chroma.sqlite3    # SQLite database  
+    └── [collection data] # Vector collections (langchain)
+
+ChromaDB Server:
+- URL: http://localhost:8000
+- Collections: langchain (default)
+- Models: Google and OpenAI embeddings supported
 ```
 
 **Collection Schema**:
@@ -337,6 +354,10 @@ GOOGLE_API_KEY=your_key_here
 
 # Optional  
 OPENAI_API_KEY=your_key_here
+
+# ChromaDB Server
+CHROMADB_HOST=localhost
+CHROMADB_PORT=8000
 ```
 
 ### **Model Selection**
@@ -364,8 +385,14 @@ python main.py store
 
 ### **Check Processing Results**
 ```bash
-# View processed documents count
-ls data/chroma_db_google/
+# Check ChromaDB server status
+./scripts/chromadb-server.sh status
+
+# Check server health
+./scripts/chromadb-server.sh health
+
+# View server data directory
+ls data/chroma_data/
 ```
 
 ### **Programmatic Usage**
@@ -410,12 +437,12 @@ python -c "from prometheus_client import generate_latest; print(generate_latest(
 RAG Store is designed as an **independent microservice**:
 
 - **Input**: Documents in `data_source/`
-- **Output**: Vector database in `data/chroma_db_*/`
+- **Output**: Vector data in ChromaDB server
 - **Consumers**: RAG Fetch service, MCP servers, other search services
 
 **Microservices Flow**:
 ```
-Documents → RAG Store → ChromaDB → RAG Fetch → Search Results
+Documents → RAG Store → ChromaDB Server → RAG Fetch → Search Results
 ```
 
 ## 🧪 Quality Features
