@@ -77,14 +77,20 @@ def show_summary(total_tests, coverage_percent, duration):
 
 
 def extract_test_count(output):
-    """Extract test count from unittest output."""
+    """Extract test count from pytest output."""
     lines = output.split("\n")
     for line in lines:
-        if line.startswith("Ran ") and " tests in " in line:
-            # Extract number from "Ran X tests in Y.YYYs"
+        # Look for pytest summary line like "=== 26 passed, 5 warnings in 0.62s ==="
+        if " passed" in line and "in " in line and line.strip().startswith("="):
+            parts = line.split()
+            for i, part in enumerate(parts):
+                if part == "passed" and i > 0:
+                    return parts[i-1]  # The number before "passed"
+        # Fallback for unittest format if still present
+        elif line.startswith("Ran ") and " tests in " in line:
             parts = line.split()
             if len(parts) >= 2:
-                return parts[1]  # The test count
+                return parts[1]
     return "Unknown"
 
 
@@ -149,7 +155,7 @@ Examples:
     # Step 1: Run tests with coverage
     print("📋 Running comprehensive test suite with coverage tracking...")
     success, test_output, test_error = run_command(
-        "uv run coverage run --source=src -m unittest discover tests -v",
+        "uv run coverage run --source=src -m pytest tests -v",
         "Test execution with coverage tracking",
     )
 
@@ -223,7 +229,7 @@ Examples:
     print("   • View detailed line-by-line coverage in HTML report")
     print("   • Focus on files with <85% coverage for improvement")
     print(
-        "   • Run specific test: python -m unittest tests.test_module.TestClass.test_method"
+        "   • Run specific test: python -m pytest tests/test_module.py::TestClass::test_method"
     )
 
     print("\n✨ Coverage analysis complete!")

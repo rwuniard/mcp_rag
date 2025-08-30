@@ -8,13 +8,13 @@ import os
 import shutil
 
 # Import the module to test
+import pytest
 import sys
 import tempfile
 import unittest
 
 from pathlib import Path
 from unittest.mock import Mock, patch
-import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 from rag_store.store_embeddings import (
@@ -45,51 +45,33 @@ class TestStoreEmbeddings(unittest.TestCase):
         self.assertEqual(ModelVendor.OPENAI.value, "openai")
         self.assertEqual(ModelVendor.GOOGLE.value, "google")
 
-    @pytest.mark.skip(reason="Pytest isolation issue - works with unittest")
-    @patch.dict(os.environ, {"GOOGLE_API_KEY": "test_key"})
-    def test_load_embedding_model_google(self):
+    @pytest.mark.skip(reason="Environment isolation issue - .env loading at import time conflicts with test suite environment. Run individually: python -m pytest tests/test_rag_store/test_store_embeddings.py::TestStoreEmbeddings::test_load_embedding_model_google")
+    @patch.dict(os.environ, {"GOOGLE_API_KEY": "test_key"}, clear=True)
+    @patch('langchain_google_genai.GoogleGenerativeAIEmbeddings')
+    def test_load_embedding_model_google(self, mock_google_class):
         """Test loading Google embedding model."""
-        import rag_store.store_embeddings as store_mod
-        original_google = store_mod.GoogleGenerativeAIEmbeddings
-        
         mock_model = Mock()
-        mock_google = Mock(return_value=mock_model)
+        mock_google_class.return_value = mock_model
         
-        # Replace the actual attribute on the module
-        store_mod.GoogleGenerativeAIEmbeddings = mock_google
+        result = load_embedding_model(ModelVendor.GOOGLE)
         
-        try:
-            result = load_embedding_model(ModelVendor.GOOGLE)
-            
-            mock_google.assert_called_once_with(
-                model="models/text-embedding-004", google_api_key="test_key"
-            )
-            self.assertEqual(result, mock_model)
-        finally:
-            # Restore the original
-            store_mod.GoogleGenerativeAIEmbeddings = original_google
+        mock_google_class.assert_called_once_with(
+            model="models/text-embedding-004", google_api_key="test_key"
+        )
+        self.assertEqual(result, mock_model)
 
-    @pytest.mark.skip(reason="Pytest isolation issue - works with unittest")
-    @patch.dict(os.environ, {"OPENAI_API_KEY": "test_key"})
-    def test_load_embedding_model_openai(self):
+    @pytest.mark.skip(reason="Environment isolation issue - .env loading at import time conflicts with test suite environment. Run individually: python -m pytest tests/test_rag_store/test_store_embeddings.py::TestStoreEmbeddings::test_load_embedding_model_openai")
+    @patch.dict(os.environ, {"OPENAI_API_KEY": "test_key"}, clear=True)
+    @patch('langchain_openai.OpenAIEmbeddings')
+    def test_load_embedding_model_openai(self, mock_openai_class):
         """Test loading OpenAI embedding model."""
-        import rag_store.store_embeddings as store_mod
-        original_openai = store_mod.OpenAIEmbeddings
-        
         mock_model = Mock()
-        mock_openai = Mock(return_value=mock_model)
+        mock_openai_class.return_value = mock_model
         
-        # Replace the actual attribute on the module
-        store_mod.OpenAIEmbeddings = mock_openai
+        result = load_embedding_model(ModelVendor.OPENAI)
         
-        try:
-            result = load_embedding_model(ModelVendor.OPENAI)
-            
-            mock_openai.assert_called_once()
-            self.assertEqual(result, mock_model)
-        finally:
-            # Restore the original
-            store_mod.OpenAIEmbeddings = original_openai
+        mock_openai_class.assert_called_once_with(openai_api_key="test_key")
+        self.assertEqual(result, mock_model)
 
     def test_process_pdf_files_empty_directory(self):
         """Test processing PDF files from empty directory."""
@@ -273,51 +255,23 @@ class TestStoreEmbeddingsErrorHandling(unittest.TestCase):
             mock_registry_instance.process_document.assert_called_once_with(text_file)
             self.assertEqual(len(documents), 1)
 
-    @pytest.mark.skip(reason="Pytest isolation issue - works with unittest")
+    @pytest.mark.skip(reason="Environment isolation issue - .env loading at import time conflicts with test suite environment. Run individually: python -m pytest tests/test_rag_store/test_store_embeddings.py::TestStoreEmbeddingsErrorHandling::test_load_embedding_model_missing_google_key")
+    @patch.dict(os.environ, {}, clear=True)
     def test_load_embedding_model_missing_google_key(self):
         """Test load_embedding_model with missing GOOGLE_API_KEY."""
-        import rag_store.store_embeddings as store_mod
-        original_getenv = store_mod.os.getenv
+        with self.assertRaises(ValueError) as context:
+            load_embedding_model(ModelVendor.GOOGLE)
         
-        # Mock os.getenv to return None for GOOGLE_API_KEY
-        def mock_getenv(key, default=None):
-            if key == "GOOGLE_API_KEY":
-                return None
-            return original_getenv(key, default)
-        
-        store_mod.os.getenv = mock_getenv
-        
-        try:
-            with self.assertRaises(ValueError) as context:
-                load_embedding_model(ModelVendor.GOOGLE)
-            
-            self.assertIn("GOOGLE_API_KEY environment variable is required", str(context.exception))
-        finally:
-            # Restore original
-            store_mod.os.getenv = original_getenv
+        self.assertIn("GOOGLE_API_KEY environment variable is required", str(context.exception))
 
-    @pytest.mark.skip(reason="Pytest isolation issue - works with unittest")
+    @pytest.mark.skip(reason="Environment isolation issue - .env loading at import time conflicts with test suite environment. Run individually: python -m pytest tests/test_rag_store/test_store_embeddings.py::TestStoreEmbeddingsErrorHandling::test_load_embedding_model_missing_openai_key")
+    @patch.dict(os.environ, {}, clear=True)
     def test_load_embedding_model_missing_openai_key(self):
         """Test load_embedding_model with missing OPENAI_API_KEY."""
-        import rag_store.store_embeddings as store_mod
-        original_getenv = store_mod.os.getenv
+        with self.assertRaises(ValueError) as context:
+            load_embedding_model(ModelVendor.OPENAI)
         
-        # Mock os.getenv to return None for OPENAI_API_KEY
-        def mock_getenv(key, default=None):
-            if key == "OPENAI_API_KEY":
-                return None
-            return original_getenv(key, default)
-        
-        store_mod.os.getenv = mock_getenv
-        
-        try:
-            with self.assertRaises(ValueError) as context:
-                load_embedding_model(ModelVendor.OPENAI)
-            
-            self.assertIn("OPENAI_API_KEY environment variable is required", str(context.exception))
-        finally:
-            # Restore original
-            store_mod.os.getenv = original_getenv
+        self.assertIn("OPENAI_API_KEY environment variable is required", str(context.exception))
 
     def test_get_text_splitter_function(self):
         """Test the get_text_splitter function."""

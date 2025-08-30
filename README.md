@@ -89,7 +89,10 @@ python run_coverage.py --html-only --open
 - **Core Processors**: 95%+ coverage (PDF: 96%, Text: 95%, Word: 93%)
 - **Document Processing**: 97% coverage with universal processor interface
 - **168 Unit Tests**: Complete test coverage including OCR, BeautifulSoup, and Tesseract integration
-- **All Dependencies**: PyMuPDF, pytesseract, Pillow, BeautifulSoup4, langchain-unstructured
+  - **164 Pass in Full Suite**: All tests pass when run together with pytest
+  - **4 Environment Isolation Tests**: Embedding tests skipped in full suite due to .env loading at import time
+  - **Individual Validation**: Use `python test_embedding_isolation.py` to validate skipped tests work correctly
+- **All Dependencies**: PyMuPDF, pytesseract, Pillow, BeautifulSoup4, langchain-unstructured  
 - **Coverage Tools**: Both simple (`run_html_coverage.py`) and full-featured (`run_coverage.py`) scripts
 
 ## Development Commands
@@ -122,6 +125,7 @@ python run_coverage.py --html-only --open
 - `python run_coverage.py --console-only` - Console-only coverage report
 - `uv run pytest tests/test_rag_store/ -v` - Test RAG Store service
 - `uv run pytest tests/test_rag_fetch/ -v` - Test RAG Fetch service
+- `python test_embedding_isolation.py` - Validate 4 embedding tests that require environment isolation
 
 ## Architecture
 
