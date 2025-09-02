@@ -62,6 +62,13 @@ rag-fetch-cli "interesting facts about animals"
 # Start MCP server for AI assistants
 python main.py server
 # Or: rag-mcp-server
+
+# Start with HTTPS (SSL/TLS encryption)
+export MCP_USE_SSL=true
+export MCP_SSL_CERT_PATH=/path/to/cert.pem
+export MCP_SSL_KEY_PATH=/path/to/key.pem
+rag-mcp-server
+# Server available at https://127.0.0.1:8000/mcp
 ```
 
 ## 📁 Project Structure
@@ -86,10 +93,12 @@ src/rag_fetch/
 
 ### **MCP Server** (`mcp_server.py`)
 - **Purpose**: Model Context Protocol server for AI assistant integration
-- **Framework**: FastMCP
-- **Tools**: `search_documents(query, limit)` 
+- **Framework**: FastMCP with HTTP/HTTPS transport support
+- **Tools**: `search_documents(query, limit)`, `server_status()`, `list_active_connections()`
+- **Transport**: HTTP (default), HTTPS (SSL/TLS), STDIO (debug mode)
 - **Response**: Structured JSON with content, metadata, and relevance scores
 - **Real-time Data**: Server architecture ensures immediate access to new documents
+- **Security**: SSL/TLS encryption support for production deployments
 
 ### **CLI Interface** (`cli.py`)
 - **Purpose**: Command-line search interface
@@ -195,11 +204,36 @@ search_documents(
 | Tool | Description | Parameters | Returns |
 |------|-------------|------------|---------|
 | `search_documents` | Semantic document search | `query` (string), `limit` (int, default: 6) | JSON with results, metadata, scores |
+| `server_status` | Get server status and metrics | None | JSON with server config, transport, and connection metrics |
+| `list_active_connections` | Monitor active connections | None | JSON with connection details (HTTP/HTTPS mode only) |
 
 ### **Adding to Claude Desktop**
 
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+#### Option 1: HTTP Transport (Default)
+```json
+{
+  "mcpServers": {
+    "rag-knowledge-base": {
+      "transport": "http",
+      "url": "http://127.0.0.1:8000/mcp"
+    }
+  }
+}
+```
 
+#### Option 2: HTTPS Transport (Secure)
+```json
+{
+  "mcpServers": {
+    "rag-knowledge-base": {
+      "transport": "http", 
+      "url": "https://127.0.0.1:8000/mcp"
+    }
+  }
+}
+```
+
+#### Option 3: STDIO Transport (Debug)
 ```json
 {
   "mcpServers": {
@@ -208,7 +242,10 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
       "args": [
         "--directory", "/Users/YOUR_USERNAME/Projects/python/mcp_rag",
         "run", "python", "src/rag_fetch/mcp_server.py"
-      ]
+      ],
+      "env": {
+        "MCP_TRANSPORT": "stdio"
+      }
     }
   }
 }
@@ -216,8 +253,31 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ### **Adding to Cursor**
 
-Add to Cursor MCP configuration:
+#### Option 1: HTTP Transport (Default)
+```json
+{
+  "mcpServers": {
+    "rag-knowledge-base": {
+      "transport": "http",
+      "url": "http://127.0.0.1:8000/mcp"
+    }
+  }
+}
+```
 
+#### Option 2: HTTPS Transport (Secure)
+```json
+{
+  "mcpServers": {
+    "rag-knowledge-base": {
+      "transport": "http",
+      "url": "https://127.0.0.1:8000/mcp"
+    }
+  }
+}
+```
+
+#### Option 3: STDIO Transport (Debug)
 ```json
 {
   "mcpServers": {
@@ -226,7 +286,10 @@ Add to Cursor MCP configuration:
       "args": [
         "--directory", "/absolute/path/to/mcp_rag",
         "run", "python", "src/rag_fetch/mcp_server.py"
-      ]
+      ],
+      "env": {
+        "MCP_TRANSPORT": "stdio"
+      }
     }
   }
 }
@@ -245,6 +308,18 @@ OPENAI_API_KEY=your_openai_api_key
 # ChromaDB Server
 CHROMADB_HOST=localhost
 CHROMADB_PORT=8000
+
+# MCP Server Configuration
+MCP_TRANSPORT=http              # Transport: http, stdio
+MCP_HOST=127.0.0.1              # HTTP server host
+MCP_PORT=8000                   # HTTP server port
+
+# HTTPS/SSL Configuration (Optional)
+MCP_USE_SSL=true                # Enable HTTPS
+MCP_SSL_CERT_PATH=/path/to/cert.pem  # SSL certificate
+MCP_SSL_KEY_PATH=/path/to/key.pem    # SSL private key
+MCP_ENVIRONMENT=production      # Environment: production or development
+MCP_SSL_VERIFY_MODE=strict      # Verification: strict, relaxed, none
 ```
 
 ### **Model Selection**
@@ -365,6 +440,14 @@ User Query → CLI → RAG Fetch → ChromaDB Server → Human-friendly Output
 - **Fast Retrieval**: Optimized vector similarity search
 - **Configurable Limits**: Adjustable result count for different use cases
 - **Efficient Loading**: Smart database connection management
+- **Secure Transport**: HTTPS/SSL encryption for production deployments
+
+### **Security Features**
+- **SSL/TLS Encryption**: Full HTTPS transport support for secure connections
+- **Certificate Validation**: Comprehensive SSL certificate verification
+- **Environment Awareness**: Development vs production security policies
+- **Client Verification**: Optional CA certificate validation for client connections
+- **Security Monitoring**: SSL configuration validation and certificate expiration warnings
 
 ## 📊 Performance Metrics
 
@@ -521,7 +604,16 @@ print(f'Search took: {(time.time() - start) * 1000:.2f}ms')
 
 ## 🔄 Version History & Changelog
 
-### **v2.0.0 - Client-Server Architecture** *(Latest)*
+### **v3.0.0 - HTTPS/SSL Security** *(Latest)*
+- ✅ **HTTPS/SSL Transport**: Full SSL/TLS encryption support for secure connections
+- ✅ **Certificate Validation**: Comprehensive SSL certificate verification and monitoring
+- ✅ **Security Features**: Production-grade security with certificate expiration warnings
+- ✅ **Environment Policies**: Development vs production security configurations
+- ✅ **Dual Transport**: HTTP (default), HTTPS (secure), STDIO (debug) transport modes
+- ✅ **Enhanced MCP Tools**: Added `server_status()` and `list_active_connections()` monitoring tools
+- ✅ **Backward Compatible**: Existing HTTP configurations continue to work unchanged
+
+### **v2.0.0 - Client-Server Architecture**
 - ✅ **Client-Server Architecture**: ChromaDB server with HTTP clients
 - ✅ **Real-time Data Access**: Server ensures immediate data freshness
 - ✅ **Docker Integration**: Easy ChromaDB server management
