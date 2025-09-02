@@ -121,8 +121,20 @@ def main():
     
     try:
         if config.transport.value == "http":
-            logger.info("Starting MCP server with Streamable HTTP transport (default)...")
+            protocol = "HTTPS" if config.use_ssl else "HTTP"
+            logger.info(f"Starting MCP server with Streamable {protocol} transport...")
             logger.info(f"Server will be available at: {config.mcp_endpoint}")
+            
+            # Validate SSL configuration if enabled
+            if config.use_ssl:
+                is_valid, error_message = config.validate_ssl_config()
+                if not is_valid:
+                    logger.error(f"SSL configuration error: {error_message}")
+                    sys.exit(1)
+                else:
+                    logger.info("SSL configuration validated successfully")
+                    logger.info(f"SSL Certificate: {config.ssl_cert_path}")
+                    logger.info(f"SSL Environment: {config.environment}")
             
             # Add CORS middleware if enabled
             if config.enable_cors:

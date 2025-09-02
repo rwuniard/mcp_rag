@@ -24,6 +24,13 @@ python main.py server
 rag-mcp-server
 # Server available at http://127.0.0.1:8000/mcp
 
+# Start with HTTPS (SSL/TLS encryption)
+export MCP_USE_SSL=true
+export MCP_SSL_CERT_PATH=/path/to/cert.pem
+export MCP_SSL_KEY_PATH=/path/to/key.pem
+rag-mcp-server
+# Server available at https://127.0.0.1:8000/mcp
+
 # For debugging with single client (Claude Desktop)
 export MCP_TRANSPORT=stdio
 rag-mcp-server
@@ -189,7 +196,8 @@ The RAG system exposes document search through MCP tools with **dual transport s
 - `search_documents(query, limit)` - Semantic search using Google embeddings
 - `server_status()` - Get server metrics and connection information
 - `list_active_connections()` - Monitor active HTTP connections (HTTP mode)
-- **HTTP Transport** - Default mode supporting concurrent web and API clients
+- **HTTP Transport** - Default mode supporting concurrent web and API clients  
+- **HTTPS Transport** - Secure HTTP with SSL/TLS encryption for production deployments
 - **STDIO Transport** - Debug mode for single-client usage (Claude Desktop)
 - Returns JSON with content, metadata, and relevance scores
 
@@ -367,7 +375,31 @@ rag-mcp-server
 }
 ```
 
-#### Option 2: STDIO Transport (Debug Mode)
+#### Option 2: HTTPS Transport (Production - Secure)
+For production deployments with SSL/TLS encryption:
+
+```bash
+# Start the HTTPS server with SSL certificates
+cd /Users/YOUR_USERNAME/Projects/python/mcp_rag
+export MCP_USE_SSL=true
+export MCP_SSL_CERT_PATH=/path/to/your/cert.pem
+export MCP_SSL_KEY_PATH=/path/to/your/key.pem
+rag-mcp-server
+# Server runs at https://127.0.0.1:8000/mcp
+```
+
+```json
+{
+  "mcpServers": {
+    "rag-knowledge-base": {
+      "transport": "http",
+      "url": "https://127.0.0.1:8000/mcp"
+    }
+  }
+}
+```
+
+#### Option 3: STDIO Transport (Debug Mode)
 ```json
 {
   "mcpServers": {
@@ -412,7 +444,31 @@ rag-mcp-server
 }
 ```
 
-#### Option 2: STDIO Transport (Debug Mode)
+#### Option 2: HTTPS Transport (Production - Secure)
+For production deployments with SSL/TLS encryption:
+
+```bash
+# Start the HTTPS server with SSL certificates
+cd /absolute/path/to/mcp_rag
+export MCP_USE_SSL=true
+export MCP_SSL_CERT_PATH=/path/to/your/cert.pem
+export MCP_SSL_KEY_PATH=/path/to/your/key.pem
+rag-mcp-server
+# Server runs at https://127.0.0.1:8000/mcp
+```
+
+```json
+{
+  "mcpServers": {
+    "rag-knowledge-base": {
+      "transport": "http",
+      "url": "https://127.0.0.1:8000/mcp"
+    }
+  }
+}
+```
+
+#### Option 3: STDIO Transport (Debug Mode)
 ```json
 {
   "mcpServers": {
@@ -448,6 +504,37 @@ rag-mcp-server
    ```
 
 3. **Connect your AI client**: Use the HTTP configuration shown above
+
+#### For HTTPS Transport (Production)
+
+1. **Set up SSL certificates**:
+   ```bash
+   # For development - generate self-signed certificates:
+   openssl req -x509 -newkey rsa:4096 -nodes -out cert.pem -keyout key.pem -days 365 \
+     -subj "/C=US/ST=Test/L=Test/O=Dev/CN=localhost"
+   
+   # For production - use CA-signed certificates from your provider
+   # Place cert.pem and key.pem in a secure location
+   ```
+
+2. **Configure environment**:
+   ```bash
+   # Copy and configure the environment file  
+   cp src/rag_fetch/.env_template src/rag_fetch/.env
+   # Edit .env and add:
+   # GOOGLE_API_KEY=your_key_here
+   # MCP_USE_SSL=true
+   # MCP_SSL_CERT_PATH=/path/to/cert.pem
+   # MCP_SSL_KEY_PATH=/path/to/key.pem
+   ```
+
+3. **Start the HTTPS server**:
+   ```bash
+   # Start HTTPS server (runs on port 8000 with SSL)
+   rag-mcp-server
+   ```
+
+4. **Connect your AI client**: Use the HTTPS configuration shown above
 
 #### For STDIO Transport (Debug Mode)
 

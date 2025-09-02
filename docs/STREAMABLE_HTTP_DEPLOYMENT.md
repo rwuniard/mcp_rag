@@ -1,13 +1,14 @@
-# MCP RAG Server - Streamable HTTP Deployment Guide
+# MCP RAG Server - HTTP/HTTPS Deployment Guide
 
-This guide covers deploying the MCP RAG server with Streamable HTTP transport for multiple client connections.
+This guide covers deploying the MCP RAG server with HTTP and HTTPS transport for multiple client connections.
 
 ## Overview
 
-The MCP RAG server now supports both STDIO and Streamable HTTP transports:
+The MCP RAG server supports multiple transport modes:
 
-- **STDIO Transport**: Default mode for single-client usage (e.g., Claude Desktop)
-- **Streamable HTTP Transport**: Network-based mode supporting multiple concurrent clients
+- **STDIO Transport**: Single-client mode for debugging (e.g., Claude Desktop)
+- **HTTP Transport**: Network-based mode supporting multiple concurrent clients
+- **HTTPS Transport**: Secure HTTP with SSL/TLS encryption for production deployments
 
 ## Quick Start
 
@@ -22,7 +23,20 @@ rag-mcp-server
 
 The server will be available at: `http://127.0.0.1:8000/mcp`
 
-### 2. STDIO Mode (Debug)
+### 2. HTTPS Mode (Production)
+```bash
+# Configure SSL certificates
+export MCP_USE_SSL=true
+export MCP_SSL_CERT_PATH=/path/to/cert.pem
+export MCP_SSL_KEY_PATH=/path/to/key.pem
+
+# Run with HTTPS transport
+rag-mcp-server
+```
+
+The server will be available at: `https://127.0.0.1:8000/mcp`
+
+### 3. STDIO Mode (Debug)
 ```bash
 # Set transport to STDIO for debugging/single-client
 export MCP_TRANSPORT=stdio
@@ -46,11 +60,17 @@ python -m rag_fetch.mcp_server
 | `MCP_LOG_LEVEL` | `INFO` | Logging level |
 | `MCP_ENABLE_CORS` | `true` | Enable CORS for web clients |
 | `MCP_CORS_ORIGINS` | `*` | Allowed CORS origins (comma-separated) |
+| `MCP_USE_SSL` | `false` | Enable HTTPS/SSL encryption |
+| `MCP_SSL_CERT_PATH` | `None` | Path to SSL certificate file |
+| `MCP_SSL_KEY_PATH` | `None` | Path to SSL private key file |
+| `MCP_SSL_CA_CERTS` | `None` | Optional CA certificates for client verification |
+| `MCP_ENVIRONMENT` | `production` | Environment: production or development |
+| `MCP_SSL_VERIFY_MODE` | `strict` | SSL verification: strict, relaxed, or none |
 | `MCP_SERVER_NAME` | `RAG World Fact Knowledge Base` | Server display name |
 
 ### Configuration Examples
 
-#### Development Setup
+#### Development Setup (HTTP)
 ```bash
 # .env file for development
 MCP_TRANSPORT=http
@@ -61,12 +81,33 @@ MCP_ENABLE_CORS=true
 MCP_CORS_ORIGINS=http://localhost:3000,http://localhost:8080
 ```
 
-#### Production Setup
+#### Development Setup (HTTPS with Self-Signed Certificates)
+```bash
+# .env file for development with HTTPS
+MCP_TRANSPORT=http
+MCP_USE_SSL=true
+MCP_SSL_CERT_PATH=./certs/dev-cert.pem
+MCP_SSL_KEY_PATH=./certs/dev-key.pem
+MCP_ENVIRONMENT=development
+MCP_SSL_VERIFY_MODE=relaxed
+MCP_HOST=127.0.0.1
+MCP_PORT=8443
+MCP_LOG_LEVEL=DEBUG
+MCP_ENABLE_CORS=true
+MCP_CORS_ORIGINS=https://localhost:3000,https://localhost:8080
+```
+
+#### Production Setup (HTTPS)
 ```bash
 # .env file for production
 MCP_TRANSPORT=http
+MCP_USE_SSL=true
+MCP_SSL_CERT_PATH=/etc/ssl/certs/mcp-server.crt
+MCP_SSL_KEY_PATH=/etc/ssl/private/mcp-server.key
+MCP_ENVIRONMENT=production
+MCP_SSL_VERIFY_MODE=strict
 MCP_HOST=0.0.0.0
-MCP_PORT=8000
+MCP_PORT=8443
 MCP_MAX_CONNECTIONS=200
 MCP_CONNECTION_TIMEOUT=600
 MCP_LOG_LEVEL=INFO
