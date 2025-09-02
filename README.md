@@ -13,14 +13,19 @@ rag-store-cli store
 ```
 
 ### 🔍 **RAG Fetch** - Search & Retrieval Service  
-Independent service for semantic search and MCP integration:
+Independent service for semantic search and MCP integration with **multi-client support**:
 ```bash
 # Search documents via CLI
 python main.py search "machine learning concepts"
 rag-fetch-cli "interesting facts"
 
-# Start MCP server for AI assistants
+# Start MCP server for multiple clients (HTTP - default)
 python main.py server
+rag-mcp-server
+# Server available at http://127.0.0.1:8000/mcp
+
+# For debugging with single client (Claude Desktop)
+export MCP_TRANSPORT=stdio
 rag-mcp-server
 ```
 
@@ -180,10 +185,13 @@ mcp_rag/
 | **MCP Server** | `rag-mcp-server` | AI assistant integration | Background MCP service |
 
 **MCP Integration Design**:
-The RAG system exposes document search through a single MCP tool:
+The RAG system exposes document search through MCP tools with **dual transport support**:
 - `search_documents(query, limit)` - Semantic search using Google embeddings
+- `server_status()` - Get server metrics and connection information
+- `list_active_connections()` - Monitor active HTTP connections (HTTP mode)
+- **HTTP Transport** - Default mode supporting concurrent web and API clients
+- **STDIO Transport** - Debug mode for single-client usage (Claude Desktop)
 - Returns JSON with content, metadata, and relevance scores
-- Hardcoded to use Google embeddings for simplicity and consistency
 
 **🔄 Real-time Data Freshness**:
 The MCP server now provides real-time data access without requiring restarts:
@@ -338,6 +346,28 @@ Add this to your Claude Desktop configuration file:
 
 **Location**: `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 
+#### Option 1: HTTP Transport (Default - Recommended)
+Start the server manually, then connect via HTTP:
+
+```bash
+# Start the HTTP server
+cd /Users/YOUR_USERNAME/Projects/python/mcp_rag
+rag-mcp-server
+# Server runs at http://127.0.0.1:8000/mcp
+```
+
+```json
+{
+  "mcpServers": {
+    "rag-knowledge-base": {
+      "transport": "http",
+      "url": "http://127.0.0.1:8000/mcp"
+    }
+  }
+}
+```
+
+#### Option 2: STDIO Transport (Debug Mode)
 ```json
 {
   "mcpServers": {
@@ -346,7 +376,10 @@ Add this to your Claude Desktop configuration file:
       "args": [
         "--directory", "/Users/YOUR_USERNAME/Projects/python/mcp_rag",
         "run", "python", "src/rag_fetch/mcp_server.py"
-      ]
+      ],
+      "env": {
+        "MCP_TRANSPORT": "stdio"
+      }
     }
   }
 }
@@ -358,6 +391,28 @@ Add this to your Cursor MCP configuration:
 
 **Location**: Cursor Settings → MCP Servers
 
+#### Option 1: HTTP Transport (Default - Recommended)
+Start the server manually first:
+
+```bash
+# Start the HTTP server
+cd /absolute/path/to/mcp_rag
+rag-mcp-server
+# Server runs at http://127.0.0.1:8000/mcp
+```
+
+```json
+{
+  "mcpServers": {
+    "rag-knowledge-base": {
+      "transport": "http",
+      "url": "http://127.0.0.1:8000/mcp"
+    }
+  }
+}
+```
+
+#### Option 2: STDIO Transport (Debug Mode)
 ```json
 {
   "mcpServers": {
@@ -366,7 +421,10 @@ Add this to your Cursor MCP configuration:
       "args": [
         "--directory", "/absolute/path/to/mcp_rag",
         "run", "python", "src/rag_fetch/mcp_server.py"
-      ]
+      ],
+      "env": {
+        "MCP_TRANSPORT": "stdio"
+      }
     }
   }
 }
@@ -374,14 +432,29 @@ Add this to your Cursor MCP configuration:
 
 ### Configuration Steps
 
-1. **Find your uv path** (after activating virtual environment):
+#### For HTTP Transport (Recommended)
+
+1. **Set up environment**:
    ```bash
-   # Activate virtual environment first (if using one)
-   # source venv/bin/activate  # or your preferred activation method
-   
+   # Copy and configure the environment file
+   cp src/rag_fetch/.env_template src/rag_fetch/.env
+   # Edit .env and add your GOOGLE_API_KEY
+   ```
+
+2. **Start the server**:
+   ```bash
+   # Start HTTP server (runs on port 8000 by default)
+   rag-mcp-server
+   ```
+
+3. **Connect your AI client**: Use the HTTP configuration shown above
+
+#### For STDIO Transport (Debug Mode)
+
+1. **Find your uv path**:
+   ```bash
    which uv
    # Usually: /usr/local/bin/uv or /opt/homebrew/bin/uv
-   # Note: Use the uv path from your activated environment
    ```
 
 2. **Get absolute project path**:
@@ -390,14 +463,24 @@ Add this to your Cursor MCP configuration:
    # Use this path in the "directory" field
    ```
 
-3. **Set environment variables** (create `.env` in project root):
+3. **Set environment variables**:
    ```bash
-   GOOGLE_API_KEY=your_google_api_key_here
+   # Copy and configure the environment file
+   cp src/rag_fetch/.env_template src/rag_fetch/.env
+   # Edit .env and add your GOOGLE_API_KEY
    ```
 
-4. **Ensure documents are stored**:
+#### Common Setup Steps
+
+1. **Ensure documents are stored**:
    ```bash
-   cd rag_store && uv run python store_embeddings.py
+   python main.py store
+   # or: rag-store-cli store
+   ```
+
+2. **Start ChromaDB server**:
+   ```bash
+   ./scripts/chromadb-server.sh start
    ```
 
 ### Available MCP Tools
@@ -407,6 +490,14 @@ Once connected, your AI assistant will have access to:
 - **`search_documents`**: Search for relevant world facts and interesting information
   - Args: `query` (string), `limit` (optional int, default: 6)
   - Returns: JSON with search results, metadata, and relevance scores
+
+- **`server_status`**: Get current server status and connection metrics
+  - Args: None
+  - Returns: JSON with server config, transport mode, and connection metrics
+
+- **`list_active_connections`**: Monitor active connections (HTTP transport only)
+  - Args: None  
+  - Returns: JSON with detailed connection information and metrics
 
 ### Example Usage in AI Chat
 
