@@ -12,3 +12,8 @@ dist/
 
 # macOS
 .DS_Store
+
+# code coverage result
+htmlcov/
+.coverage
+.coveragerc

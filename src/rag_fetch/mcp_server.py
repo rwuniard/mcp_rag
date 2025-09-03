@@ -31,6 +31,64 @@ connection_manager.max_connections = config.max_connections
 connection_manager.connection_timeout = config.connection_timeout
 
 
+# Connection tracking middleware
+import uuid
+
+async def connection_tracking_middleware(request, call_next):
+    """Middleware to track client activity with unique connection IDs."""
+    # Extract client information from request context if available
+    client_ip = getattr(request, 'client', {}).get('ip', 'unknown')
+    user_agent = 'FastMCP-Client'
+    
+    # Try to get client info from headers if available
+    if hasattr(request, 'headers') and request.headers:
+        user_agent = request.headers.get('user-agent', user_agent)
+        # For HTTP requests, try to get real IP from common headers
+        forwarded_for = request.headers.get('x-forwarded-for')
+        real_ip = request.headers.get('x-real-ip')
+        if forwarded_for:
+            client_ip = forwarded_for.split(',')[0].strip()
+        elif real_ip:
+            client_ip = real_ip
+    
+    # Each request gets tracked as a separate activity
+    # This simulates connection tracking by treating each tool call as connection activity
+    # In a real server, you'd have persistent connection state, but FastMCP abstracts this away
+    connection_id = None
+    try:
+        # For each request, we'll create a unique connection entry
+        # This gives us realistic connection metrics for monitoring
+        connection_id = connection_manager.create_connection(client_ip, user_agent)
+        logger.debug(f"Request tracked as connection: {connection_id}")
+        
+        # Process the request
+        response = await call_next(request)
+        
+        # After processing, mark this "connection" as complete
+        # In real usage, connections would stay open longer
+        connection_manager.close_connection(connection_id)
+        
+        return response
+        
+    except Exception as e:
+        # If connection was created, close it before handling the error
+        if connection_id:
+            connection_manager.close_connection(connection_id)
+        
+        # Check if this was a connection creation failure or request processing failure
+        if "create_connection" in str(e) or connection_id is None:
+            logger.warning(f"Failed to track request: {e}")
+            # Process the request even if tracking fails
+            return await call_next(request)
+        else:
+            # Request processing failed, re-raise the exception
+            logger.warning(f"Request processing failed: {e}")
+            raise
+
+# Add the middleware to the MCP server
+mcp.add_middleware(connection_tracking_middleware)
+
+
 @mcp.tool
 def search_documents(query: str, limit: int = 6) -> str:
     """
