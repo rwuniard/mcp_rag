@@ -266,7 +266,7 @@ class TestMCPServerStress(unittest.TestCase):
         from rag_fetch.mcp_server import mcp
         
         # Mock the search function to avoid ChromaDB dependency
-        with patch('rag_fetch.search_similarity.similarity_search_mcp_tool') as mock_search:
+        with patch('rag_fetch.mcp_server.similarity_search_mcp_tool') as mock_search:
             mock_search.return_value = json.dumps({
                 "query": "test query",
                 "results": [
