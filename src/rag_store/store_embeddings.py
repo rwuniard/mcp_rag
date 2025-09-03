@@ -44,7 +44,7 @@ DATA_DIR = PROJECT_ROOT / "data"
 CHROMADB_HOST = os.getenv("CHROMADB_HOST", "localhost")
 CHROMADB_PORT = int(os.getenv("CHROMADB_PORT", "8000"))
 CHROMADB_URL = f"http://{CHROMADB_HOST}:{CHROMADB_PORT}"
-DEFAULT_COLLECTION_NAME = os.getenv("CHROMADB_COLLECTION_NAME", "langchain")
+DEFAULT_COLLECTION_NAME = os.getenv("CHROMADB_COLLECTION_NAME", "rag-kb")
 
 
 class ModelVendor(Enum):

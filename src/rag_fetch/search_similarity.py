@@ -29,7 +29,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 CHROMADB_HOST = os.getenv("CHROMADB_HOST", "localhost")
 CHROMADB_PORT = int(os.getenv("CHROMADB_PORT", "8000"))
 CHROMADB_URL = f"http://{CHROMADB_HOST}:{CHROMADB_PORT}"
-DEFAULT_COLLECTION_NAME = os.getenv("CHROMADB_COLLECTION_NAME", "langchain")
+DEFAULT_COLLECTION_NAME = os.getenv("CHROMADB_COLLECTION_NAME", "rag-kb")
 
 # Legacy file-based configuration (fallback)
 DATA_DIR = PROJECT_ROOT / "data"
