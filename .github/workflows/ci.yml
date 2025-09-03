@@ -127,15 +127,15 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          uv run python -m coverage run --source=src -m unittest discover tests -v
-          uv run python -m coverage report --show-missing
-          uv run python -m coverage xml     
-          uv run python -m coverage html
+          uv run coverage run --source=src -m pytest tests -v
+          uv run coverage report --show-missing
+          uv run coverage xml     
+          uv run coverage html
         
       - name: Check coverage threshold
         run: |
           # Extract coverage percentage
-          COVERAGE=$(uv run python -m coverage report | grep TOTAL | awk '{print $4}' | sed 's/%//')
+          COVERAGE=$(uv run coverage report | grep TOTAL | awk '{print $4}' | sed 's/%//')
           echo "Current coverage: ${COVERAGE}%"
           
           # Set thresholds
@@ -253,7 +253,7 @@ jobs:
           EOF
 
       - name: Run tests
-        run: uv run python -m unittest discover tests -v
+        run: uv run pytest tests -v
 
   # Job 6: Release (Only on main branch)
   release:
