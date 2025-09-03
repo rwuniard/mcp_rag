@@ -45,9 +45,9 @@ class TestStoreEmbeddings(unittest.TestCase):
         self.assertEqual(ModelVendor.OPENAI.value, "openai")
         self.assertEqual(ModelVendor.GOOGLE.value, "google")
 
-    @pytest.mark.skip(reason="Environment isolation issue - .env loading at import time conflicts with test suite environment. Run individually: python -m pytest tests/test_rag_store/test_store_embeddings.py::TestStoreEmbeddings::test_load_embedding_model_google")
+    @unittest.skip("Environment isolation issue - .env loading at import time conflicts with test suite environment")
     @patch.dict(os.environ, {"GOOGLE_API_KEY": "test_key"}, clear=True)
-    @patch('langchain_google_genai.GoogleGenerativeAIEmbeddings')
+    @patch('rag_store.store_embeddings.GoogleGenerativeAIEmbeddings')
     def test_load_embedding_model_google(self, mock_google_class):
         """Test loading Google embedding model."""
         mock_model = Mock()
@@ -60,9 +60,9 @@ class TestStoreEmbeddings(unittest.TestCase):
         )
         self.assertEqual(result, mock_model)
 
-    @pytest.mark.skip(reason="Environment isolation issue - .env loading at import time conflicts with test suite environment. Run individually: python -m pytest tests/test_rag_store/test_store_embeddings.py::TestStoreEmbeddings::test_load_embedding_model_openai")
+    @unittest.skip("Environment isolation issue - .env loading at import time conflicts with test suite environment")
     @patch.dict(os.environ, {"OPENAI_API_KEY": "test_key"}, clear=True)
-    @patch('langchain_openai.OpenAIEmbeddings')
+    @patch('rag_store.store_embeddings.OpenAIEmbeddings')
     def test_load_embedding_model_openai(self, mock_openai_class):
         """Test loading OpenAI embedding model."""
         mock_model = Mock()
@@ -255,7 +255,7 @@ class TestStoreEmbeddingsErrorHandling(unittest.TestCase):
             mock_registry_instance.process_document.assert_called_once_with(text_file)
             self.assertEqual(len(documents), 1)
 
-    @pytest.mark.skip(reason="Environment isolation issue - .env loading at import time conflicts with test suite environment. Run individually: python -m pytest tests/test_rag_store/test_store_embeddings.py::TestStoreEmbeddingsErrorHandling::test_load_embedding_model_missing_google_key")
+    @unittest.skip("Environment isolation issue - .env loading at import time conflicts with test suite environment")
     @patch.dict(os.environ, {}, clear=True)
     def test_load_embedding_model_missing_google_key(self):
         """Test load_embedding_model with missing GOOGLE_API_KEY."""
@@ -264,7 +264,7 @@ class TestStoreEmbeddingsErrorHandling(unittest.TestCase):
         
         self.assertIn("GOOGLE_API_KEY environment variable is required", str(context.exception))
 
-    @pytest.mark.skip(reason="Environment isolation issue - .env loading at import time conflicts with test suite environment. Run individually: python -m pytest tests/test_rag_store/test_store_embeddings.py::TestStoreEmbeddingsErrorHandling::test_load_embedding_model_missing_openai_key")
+    @unittest.skip("Environment isolation issue - .env loading at import time conflicts with test suite environment")
     @patch.dict(os.environ, {}, clear=True)
     def test_load_embedding_model_missing_openai_key(self):
         """Test load_embedding_model with missing OPENAI_API_KEY."""
@@ -414,12 +414,12 @@ class TestCollectionNameConfiguration(unittest.TestCase):
         self.assertEqual(DEFAULT_COLLECTION_NAME, "test_custom_collection")
 
     def test_default_collection_name_fallback(self):
-        """Test DEFAULT_COLLECTION_NAME reads from environment or falls back to 'langchain'."""
+        """Test DEFAULT_COLLECTION_NAME reads from environment or falls back to 'rag-kb'."""
         from rag_store.store_embeddings import DEFAULT_COLLECTION_NAME
         
         # Since we have a real .env file with CHROMADB_COLLECTION_NAME=test_rag_kb,
         # the test should verify that the environment variable is being read correctly
-        expected_value = os.getenv("CHROMADB_COLLECTION_NAME", "langchain")
+        expected_value = os.getenv("CHROMADB_COLLECTION_NAME", "rag-kb")
         
         # Verify that DEFAULT_COLLECTION_NAME matches what we expect from the environment
         self.assertEqual(DEFAULT_COLLECTION_NAME, expected_value)
