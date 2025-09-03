@@ -22,11 +22,12 @@ class TestServerConfig(unittest.TestCase):
     
     def setUp(self):
         """Set up test environment."""
-        # Clear environment variables
+        # Clear environment variables including SSL ones
         env_vars = [
             "MCP_TRANSPORT", "MCP_HOST", "MCP_PORT", "MCP_HTTP_PATH",
             "MCP_MAX_CONNECTIONS", "MCP_CONNECTION_TIMEOUT", "MCP_LOG_LEVEL",
-            "MCP_ENABLE_CORS", "MCP_CORS_ORIGINS"
+            "MCP_ENABLE_CORS", "MCP_CORS_ORIGINS", "MCP_USE_SSL",
+            "MCP_SSL_CERT_PATH", "MCP_SSL_KEY_PATH", "MCP_SSL_CA_CERTS"
         ]
         for var in env_vars:
             if var in os.environ:
@@ -44,11 +45,13 @@ class TestServerConfig(unittest.TestCase):
         self.assertEqual(config.connection_timeout, 300)
         self.assertTrue(config.enable_cors)
     
+    @patch.dict(os.environ, {}, clear=True)  # Clear all env vars
     def test_http_transport_config(self):
         """Test HTTP transport configuration."""
         os.environ["MCP_TRANSPORT"] = "http"
         os.environ["MCP_HOST"] = "0.0.0.0"
         os.environ["MCP_PORT"] = "9000"
+        os.environ["MCP_USE_SSL"] = "false"  # Explicitly disable SSL
         
         config = ServerConfig()
         
@@ -59,12 +62,14 @@ class TestServerConfig(unittest.TestCase):
         self.assertEqual(config.server_url, "http://0.0.0.0:9000")
         self.assertEqual(config.mcp_endpoint, "http://0.0.0.0:9000/mcp")
     
+    @patch.dict(os.environ, {}, clear=True)  # Clear all env vars
     def test_transport_config_generation(self):
         """Test transport configuration generation for FastMCP."""
         os.environ["MCP_TRANSPORT"] = "http"
         os.environ["MCP_HOST"] = "localhost"
         os.environ["MCP_PORT"] = "8080"
         os.environ["MCP_HTTP_PATH"] = "/api/mcp"
+        os.environ["MCP_USE_SSL"] = "false"  # Explicitly disable SSL
         
         config = ServerConfig()
         transport_config = config.get_transport_config()
