@@ -227,10 +227,19 @@ search_documents(
   "mcpServers": {
     "rag-knowledge-base": {
       "transport": "http", 
-      "url": "https://127.0.0.1:8000/mcp"
+      "url": "https://127.0.0.1:8002/mcp"
     }
   }
 }
+```
+
+**For MCP Inspector with HTTPS:**
+```bash
+# Trust the self-signed certificate
+export NODE_EXTRA_CA_CERTS=$(pwd)/tests/ssl_certs/ca-cert.pem
+npx @modelcontextprotocol/inspector
+
+# Then connect to: https://127.0.0.1:8002/mcp
 ```
 
 #### Option 3: STDIO Transport (Debug)
@@ -259,7 +268,7 @@ search_documents(
   "mcpServers": {
     "rag-knowledge-base": {
       "transport": "http",
-      "url": "http://127.0.0.1:8000/mcp"
+      "url": "http://127.0.0.1:8002/mcp"
     }
   }
 }
@@ -271,7 +280,7 @@ search_documents(
   "mcpServers": {
     "rag-knowledge-base": {
       "transport": "http",
-      "url": "https://127.0.0.1:8000/mcp"
+      "url": "https://127.0.0.1:8002/mcp"
     }
   }
 }
@@ -448,6 +457,43 @@ User Query → CLI → RAG Fetch → ChromaDB Server → Human-friendly Output
 - **Environment Awareness**: Development vs production security policies
 - **Client Verification**: Optional CA certificate validation for client connections
 - **Security Monitoring**: SSL configuration validation and certificate expiration warnings
+
+### **SSL/HTTPS Troubleshooting**
+
+**Self-Signed Certificate Connection Issues:**
+
+When connecting to HTTPS endpoints with self-signed certificates, clients may show certificate verification errors like:
+```
+Error: unable to verify the first certificate
+UNABLE_TO_VERIFY_LEAF_SIGNATURE
+```
+
+**Solution 1 - Trust the CA Certificate (Recommended):**
+```bash
+# For Node.js MCP clients (MCP Inspector, Claude Desktop, etc.)
+# Run from the mcp_rag project root directory:
+export NODE_EXTRA_CA_CERTS=$(pwd)/tests/ssl_certs/ca-cert.pem
+npx @modelcontextprotocol/inspector
+
+# Or with absolute path (replace with your actual project path):
+export NODE_EXTRA_CA_CERTS=/Users/YOUR_USERNAME/Projects/python/mcp_rag/tests/ssl_certs/ca-cert.pem
+npx @modelcontextprotocol/inspector
+
+# For permanent use, add to your shell profile:
+echo "export NODE_EXTRA_CA_CERTS=$(pwd)/tests/ssl_certs/ca-cert.pem" >> ~/.zshrc
+```
+
+**Solution 2 - Disable SSL Verification (Development Only):**
+```bash
+# SECURITY WARNING: Only use in development environments
+NODE_TLS_REJECT_UNAUTHORIZED=0 npx @modelcontextprotocol/inspector
+```
+
+**Note on System Certificate Installation:**
+Installing custom CA certificates system-wide on macOS is restricted by System Integrity Protection and requires disabling security features. For development purposes, **Solutions 1 and 2 above are recommended** as they work reliably without modifying system security settings.
+
+**FastMCP Banner Display Issue:**
+The FastMCP banner may show `http://` even when SSL is enabled. This is a cosmetic issue only - the server actually runs HTTPS correctly. Look for the Uvicorn log message showing `https://` for the actual protocol.
 
 ## 📊 Performance Metrics
 

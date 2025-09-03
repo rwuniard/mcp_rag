@@ -249,17 +249,12 @@ class ServerConfig:
             "ssl_keyfile": self.ssl_key_path,
         }
         
-        # Add CA certificates if provided
+        # Add CA certificates if provided  
         if self.ssl_ca_certs:
             ssl_config["ssl_ca_certs"] = self.ssl_ca_certs
             
-        # Set certificate requirements based on verification mode
-        if self.ssl_verify_mode == "strict":
-            ssl_config["ssl_cert_reqs"] = ssl.CERT_REQUIRED
-        elif self.ssl_verify_mode == "relaxed":
-            ssl_config["ssl_cert_reqs"] = ssl.CERT_OPTIONAL
-        else:
-            ssl_config["ssl_cert_reqs"] = ssl.CERT_NONE
+        # Note: ssl_cert_reqs is not a uvicorn parameter, removing it
+        # Uvicorn handles SSL verification differently
             
         return ssl_config
     

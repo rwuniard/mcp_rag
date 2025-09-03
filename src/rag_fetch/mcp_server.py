@@ -143,6 +143,14 @@ def main():
             
             # Run with transport configuration
             transport_config = config.get_transport_config()
+            
+            # Display correct HTTPS endpoint (FastMCP banner shows incorrect http://)
+            if config.use_ssl:
+                logger.info("=" * 60)
+                logger.info(f"✅ HTTPS Server Running: {config.mcp_endpoint}")
+                logger.info(f"   (FastMCP banner may show http:// - ignore that)")
+                logger.info("=" * 60)
+            
             mcp.run(transport="http", **transport_config)
             
         elif config.transport.value == "stdio":
