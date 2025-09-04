@@ -79,8 +79,8 @@ class TestRAGFetchCLI(unittest.TestCase):
         output = mock_stdout.getvalue()
         self.assertIn("🤖 MCP RAG - Retrieval Augmented Generation with MCP", output)
         self.assertIn("Usage:", output)
-        self.assertIn("python main.py <search query>", output)
-        self.assertIn("python mcp_server.py", output)
+        self.assertIn("rag-fetch-cli <search query>", output)
+        self.assertIn("rag-mcp-server", output)
 
     @patch('sys.stdout', new_callable=io.StringIO)
     @patch('rag_fetch.cli.similarity_search_mcp_tool')

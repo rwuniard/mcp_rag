@@ -120,7 +120,7 @@ class TestMCPServerIntegration(unittest.TestCase):
                 status = json.loads(result.data)
                 
                 self.assertEqual(status['server_name'], 'RAG World Fact Knowledge Base')
-                self.assertEqual(status['status'], 'running')
+                self.assertEqual(status['status'], 'healthy')
                 self.assertIn('config', status)
                 self.assertIn('metrics', status)
                 self.assertIn('active_connections', status)
