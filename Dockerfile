@@ -71,9 +71,13 @@ WORKDIR /app
 # Copy built wheel from builder stage
 COPY --from=builder /app/dist/*.whl /tmp/
 
-# Install the package and runtime dependencies only
-RUN pip install --no-cache-dir /tmp/*.whl \
+# Install the package and runtime dependencies to /app
+RUN pip install --no-cache-dir --target /app /tmp/*.whl \
     && rm -rf /tmp/*.whl /root/.cache/pip
+
+# Update PATH and PYTHONPATH to include the /app directory where packages are installed
+ENV PATH="/app/bin:$PATH" \
+    PYTHONPATH="/app:$PYTHONPATH"
 
 # Copy environment template
 COPY src/rag_fetch/.env_template /app/.env_template
