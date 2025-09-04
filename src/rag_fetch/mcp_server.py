@@ -90,6 +90,38 @@ async def connection_tracking_middleware(request, call_next):
 mcp.add_middleware(connection_tracking_middleware)
 
 
+# Add health endpoint for Docker healthcheck
+@mcp.get("/health")
+def health_check():
+    """
+    HTTP health check endpoint for Docker container health monitoring.
+    
+    Returns:
+        Simple OK response indicating server is healthy
+    """
+    from datetime import datetime, timezone
+    
+    # Basic health check - verify server is responding and can access ChromaDB
+    try:
+        # Try to get connection metrics (validates internal state)
+        metrics = connection_manager.get_metrics()
+        
+        return {
+            "status": "healthy",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "server": config.server_name,
+            "version": __version__,
+            "connections": metrics.get("total_connections", 0)
+        }
+    except Exception as e:
+        # Return error status if health check fails
+        return {
+            "status": "unhealthy", 
+            "error": str(e),
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+
+
 @mcp.tool
 def search_documents(query: str, limit: int = 6) -> str:
     """
@@ -115,7 +147,7 @@ def server_status() -> str:
         JSON string containing server status, version, and connection information
     """
     import json
-    from datetime import datetime
+    from datetime import datetime, timezone
     
     version_info = get_version_info()
     
@@ -127,7 +159,7 @@ def server_status() -> str:
             "branch": version_info["git_branch"],
             "dirty": version_info["git_dirty"],
         },
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "transport": config.transport.value,
         "status": "healthy",
         "config": {
