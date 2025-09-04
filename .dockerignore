@@ -1,0 +1,119 @@
+# Git and version control
+.git
+.gitignore
+.gitattributes
+
+# Python cache and build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.env
+.env.*
+.venv/
+venv/
+ENV/
+env/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing and coverage
+.coverage
+.pytest_cache/
+.tox/
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+htmlcov/
+
+# Documentation
+docs/_build/
+.readthedocs.yml
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# Logs and databases
+*.log
+*.db
+*.sqlite
+*.sqlite3
+
+# ChromaDB data (will be volume mounted)
+data/
+chroma_data/
+setup_chroma_db/data/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+
+# Project specific
+tests/
+test_*.py
+*_test.py
+conftest.py
+
+# Development scripts
+scripts/
+run_*.py
+test_*.py
+check_*.py
+
+# Docker files (except the main Dockerfile)
+docker-compose*.yml
+Dockerfile.*
+
+# CI/CD files
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Legacy and revision directories
+revisit_for_legacy_word/
+
+# Coverage and test artifacts
+run_coverage.py
+.coverage*
+htmlcov/
+
+# Environment and config files with secrets
+src/rag_fetch/.env

@@ -1,0 +1,111 @@
+services:
+  # ChromaDB vector database
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: mcp-rag-chromadb
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      - CHROMA_SERVER_HOST=0.0.0.0
+      - CHROMA_SERVER_HTTP_PORT=8000
+      - CHROMA_SERVER_GRPC_PORT=8001
+      - CHROMA_SERVER_CORS_ALLOW_ORIGINS=["*"]
+      - ANONYMIZED_TELEMETRY=False
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - rag-network
+
+  # RAG Fetch MCP Server
+  rag-fetch:
+    build:
+      context: .
+      target: production
+      args:
+        - BUILD_DATE=${BUILD_DATE:-$(date -u +"%Y-%m-%dT%H:%M:%SZ")}
+        - GIT_COMMIT=${GIT_COMMIT:-$(git rev-parse --short HEAD)}
+        - GIT_BRANCH=${GIT_BRANCH:-$(git rev-parse --abbrev-ref HEAD)}
+        - VERSION=${VERSION:-$(git describe --tags --always)}
+    container_name: mcp-rag-fetch
+    ports:
+      - "8080:8080"
+    environment:
+      # MCP Server Configuration
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8080
+      - MCP_TRANSPORT=http
+      - MCP_SERVER_NAME=RAG Fetch MCP Server
+      - MCP_MAX_CONNECTIONS=100
+      
+      # ChromaDB Configuration
+      - CHROMADB_HOST=chromadb
+      - CHROMADB_PORT=8000
+      - CHROMADB_SSL=false
+      
+      # Logging
+      - LOG_LEVEL=INFO
+      
+      # AI API Keys (set in .env file)
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+    volumes:
+      - ./src/rag_fetch/.env:/app/.env:ro
+    depends_on:
+      chromadb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - rag-network
+    labels:
+      - "service=rag-fetch"
+      - "version=${VERSION:-latest}"
+      - "git.commit=${GIT_COMMIT:-unknown}"
+
+  # Development override for rag-fetch (uncomment for development)
+  # rag-fetch-dev:
+  #   build:
+  #     context: .
+  #     target: development
+  #   container_name: mcp-rag-fetch-dev
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     - MCP_HOST=0.0.0.0
+  #     - MCP_PORT=8080
+  #     - MCP_TRANSPORT=http
+  #     - CHROMADB_HOST=chromadb
+  #     - CHROMADB_PORT=8000
+  #     - LOG_LEVEL=DEBUG
+  #     - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+  #     - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+  #   volumes:
+  #     - ./src:/app/src  # Hot reload for development
+  #     - ./src/rag_fetch/.env:/app/.env:ro
+  #   depends_on:
+  #     chromadb:
+  #       condition: service_healthy
+  #   networks:
+  #     - rag-network
+
+networks:
+  rag-network:
+    driver: bridge
+    name: mcp-rag-network
+
+volumes:
+  chroma_data:
+    driver: local
+    name: mcp-rag-chroma-data
