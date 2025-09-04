@@ -5,7 +5,7 @@
 
 set -e
 
-# Configuration
+# Configuration  
 MCP_CONTAINER="mcp-rag-server"
 GITHUB_IMAGE="ghcr.io/rwuniard/mcp_rag:latest"
 NETWORK_NAME="mcp-network"
@@ -50,14 +50,11 @@ if ! is_container_running "chromadb"; then
 fi
 echo -e "${GREEN}✅ ChromaDB is running${NC}"
 
-# Step 3: Stop existing MCP container if running
+# Step 3: Stop existing MCP server if running
 echo -e "\n${YELLOW}🔄 Checking existing MCP RAG server...${NC}"
-if is_container_running "$MCP_CONTAINER"; then
-    echo -e "${YELLOW}🛑 Stopping existing MCP RAG server...${NC}"
-    docker stop "$MCP_CONTAINER"
-    docker rm "$MCP_CONTAINER"
-    echo -e "${GREEN}✅ Previous container stopped and removed${NC}"
-fi
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+docker-compose -f "$SCRIPT_DIR/docker-compose.mcp-server.yml" down 2>/dev/null || true
+echo -e "${GREEN}✅ Previous MCP server stopped${NC}"
 
 # Step 4: Pull latest production image
 echo -e "\n${YELLOW}📦 Pulling latest production Docker image...${NC}"
@@ -65,18 +62,9 @@ echo -e "${BLUE}Image: $GITHUB_IMAGE${NC}"
 docker pull "$GITHUB_IMAGE"
 echo -e "${GREEN}✅ Latest production image pulled${NC}"
 
-# Step 5: Run MCP RAG server
+# Step 5: Start MCP RAG server with docker-compose
 echo -e "\n${YELLOW}🚀 Starting MCP RAG server...${NC}"
-docker run -d \
-    --name "$MCP_CONTAINER" \
-    --network "$NETWORK_NAME" \
-    -p 8080:8080 \
-    -e CHROMADB_HOST=chromadb \
-    -e CHROMADB_PORT=8000 \
-    -e MCP_HOST=0.0.0.0 \
-    -e MCP_PORT=8080 \
-    -e MCP_TRANSPORT=http \
-    "$GITHUB_IMAGE"
+docker-compose -f "$SCRIPT_DIR/docker-compose.mcp-server.yml" up -d mcp-rag-server
 
 # Step 6: Wait and verify
 echo -e "${YELLOW}⏳ Waiting for MCP RAG server to start...${NC}"
