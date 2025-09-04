@@ -25,9 +25,24 @@ show_help() {
 
 start_server() {
     echo "🚀 Starting ChromaDB server..."
+    
+    # Create network if it doesn't exist
+    if ! docker network ls | grep -q "mcp-network"; then
+        echo "🔧 Creating mcp-network..."
+        docker network create mcp-network
+        echo "✅ Network created"
+    else
+        echo "✅ Network mcp-network already exists"
+    fi
+    
+    # Create data directory
     mkdir -p data/chroma_data
+    
+    # Start ChromaDB with docker-compose
     docker-compose -f "$SETUP_DIR/docker-compose.yml" up -d chromadb
+    
     echo "✅ ChromaDB server started on http://localhost:8000"
+    echo "🌐 Container name: chromadb (accessible from mcp-network)"
     echo "💡 Run '$0 health' to check server status"
 }
 

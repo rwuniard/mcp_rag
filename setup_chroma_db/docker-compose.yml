@@ -1,7 +1,7 @@
 services:
   chromadb:
     image: chromadb/chroma:latest
-    container_name: mcp-rag-chromadb
+    container_name: chromadb
     ports:
       - "8000:8000"
     volumes:
@@ -19,11 +19,12 @@ services:
       start_period: 40s
     restart: unless-stopped
     networks:
-      - chroma-network
+      - mcp-network
 
 networks:
-  chroma-network:
-    driver: bridge
+  mcp-network:
+    name: mcp-network
+    external: true
 
 volumes:
   chroma_data:
