@@ -75,6 +75,9 @@ COPY --from=builder /app/dist/*.whl /tmp/
 RUN pip install --no-cache-dir /tmp/*.whl \
     && rm -rf /tmp/*.whl /root/.cache/pip
 
+# Copy environment template
+COPY src/rag_fetch/.env_template /app/.env_template
+
 # Generate .env file with real API key from build argument
 RUN cp /app/.env_template /app/.env \
     && sed -i "s/your_google_api_key_here/${GOOGLE_API_KEY}/g" /app/.env \
@@ -83,9 +86,6 @@ RUN cp /app/.env_template /app/.env \
 # Create directories for data and logs
 RUN mkdir -p /app/data /app/logs \
     && chown -R ragfetch:ragfetch /app
-
-# Copy environment template
-COPY src/rag_fetch/.env_template /app/.env_template
 
 # Switch to non-root user
 USER ragfetch
