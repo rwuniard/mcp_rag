@@ -255,66 +255,69 @@ jobs:
       - name: Run tests
         run: uv run pytest tests -v
 
-  # Job 6: Release (Only on main branch)
-  release:
-    name: Release
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: [quality, security, test, integration]
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v3
-
-      - name: Install dependencies
-        run: uv sync
-
-      - name: Build package
-        run: uv build
-
-      - name: Create GitHub Release (if version changed)
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const toml = fs.readFileSync('pyproject.toml', 'utf8');
-            const version = toml.match(/version = "(.+)"/)[1];
-            
-            try {
-              const release = await github.rest.repos.createRelease({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                tag_name: `v${version}`,
-                name: `Release v${version}`,
-                body: 'Automated release from main branch',
-                draft: false,
-                prerelease: false
-              });
-              console.log(`Created release ${release.data.html_url}`);
-            } catch (error) {
-              if (error.status === 422) {
-                console.log('Release already exists, skipping...');
-              } else {
-                throw error;
-              }
-            }
-
-      - name: Publish to PyPI (Optional - configure secrets)
-        env:
-          PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-        run: |
-          if [ -n "$PYPI_API_TOKEN" ]; then
-            uv publish --token $PYPI_API_TOKEN
-          else
-            echo "PYPI_API_TOKEN not configured, skipping PyPI publish"
-          fi
+  # Job 6: Release (Disabled - using dedicated release.yml workflow instead)
+  # The release functionality has been moved to .github/workflows/release.yml 
+  # which provides better version management, Docker publishing, and release notes.
+  #
+  # release:
+  #   name: Release
+  #   runs-on: ubuntu-latest
+  #   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+  #   needs: [quality, security, test, integration]
+  #   
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
+  #
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v4
+  #       with:
+  #         python-version: ${{ env.PYTHON_VERSION }}
+  #
+  #     - name: Install uv
+  #       uses: astral-sh/setup-uv@v3
+  #
+  #     - name: Install dependencies
+  #       run: uv sync
+  #
+  #     - name: Build package
+  #       run: uv build
+  #
+  #     - name: Create GitHub Release (if version changed)
+  #       uses: actions/github-script@v7
+  #       with:
+  #         script: |
+  #           const fs = require('fs');
+  #           const toml = fs.readFileSync('pyproject.toml', 'utf8');
+  #           const version = toml.match(/version = "(.+)"/)[1];
+  #           
+  #           try {
+  #             const release = await github.rest.repos.createRelease({
+  #               owner: context.repo.owner,
+  #               repo: context.repo.repo,
+  #               tag_name: `v${version}`,
+  #               name: `Release v${version}`,
+  #               body: 'Automated release from main branch',
+  #               draft: false,
+  #               prerelease: false
+  #             });
+  #             console.log(`Created release ${release.data.html_url}`);
+  #           } catch (error) {
+  #             if (error.status === 422) {
+  #               console.log('Release already exists, skipping...');
+  #             } else {
+  #               throw error;
+  #             }
+  #           }
+  #
+  #     - name: Publish to PyPI (Optional - configure secrets)
+  #       env:
+  #         PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+  #       run: |
+  #         if [ -n "$PYPI_API_TOKEN" ]; then
+  #           uv publish --token $PYPI_API_TOKEN
+  #         else
+  #           echo "PYPI_API_TOKEN not configured, skipping PyPI publish"
+  #         fi
