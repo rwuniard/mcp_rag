@@ -75,22 +75,30 @@ jobs:
     - name: Install dependencies
       run: uv sync --dev
 
-    - name: Determine version
+    - name: Create release tag and determine version
       id: version
       run: |
-        # Get current version from pyproject.toml
-        CURRENT_VERSION=$(uv run python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
-        echo "Current version: $CURRENT_VERSION"
+        # Install the package to get version from setuptools_scm
+        uv sync --dev
+        
+        # Get current version from setuptools_scm
+        CURRENT_VERSION=$(uv run python -c "from setuptools_scm import get_version; print(get_version())")
+        echo "Current version from setuptools_scm: $CURRENT_VERSION"
         
         # For automatic releases, use patch bump
-        # For manual releases, use specified bump type
+        # For manual releases, use specified bump type  
         BUMP_TYPE="${{ github.event.inputs.version_bump || 'patch' }}"
+        echo "Version bump type: $BUMP_TYPE"
         
-        # Simple version bumping (you might want to use a more sophisticated tool like bump2version)
-        IFS='.' read -ra VERSION_PARTS <<< "$CURRENT_VERSION"
+        # Extract base version (remove any dev/local parts)
+        BASE_VERSION=$(echo "$CURRENT_VERSION" | sed 's/\.dev.*//g' | sed 's/+.*//g')
+        echo "Base version: $BASE_VERSION"
+        
+        # Simple version bumping
+        IFS='.' read -ra VERSION_PARTS <<< "$BASE_VERSION"
         MAJOR=${VERSION_PARTS[0]}
-        MINOR=${VERSION_PARTS[1]}
-        PATCH=${VERSION_PARTS[2]}
+        MINOR=${VERSION_PARTS[1]:-0}
+        PATCH=${VERSION_PARTS[2]:-0}
         
         case $BUMP_TYPE in
           major)
@@ -111,8 +119,13 @@ jobs:
         echo "New version: $NEW_VERSION"
         echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
         
-        # Update pyproject.toml
-        sed -i "s/version = \"$CURRENT_VERSION\"/version = \"$NEW_VERSION\"/" pyproject.toml
+        # Create the Git tag (this will make setuptools_scm use this version)
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git tag "v$NEW_VERSION"
+        git push origin "v$NEW_VERSION"
+        
+        echo "✅ Created and pushed tag: v$NEW_VERSION"
 
     - name: Build package
       run: |
@@ -280,15 +293,11 @@ Built from commit: \`${{ github.sha }}\`"
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Update main branch with version bump
+    - name: Post-release verification
       run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        
-        # The version was already updated in build step, commit it
-        git add pyproject.toml
-        git commit -m "🔖 Bump version to ${{ needs.build-and-publish.outputs.version }}" || echo "No changes to commit"
-        git push || echo "No changes to push"
+        echo "✅ Release tag created: v${{ needs.build-and-publish.outputs.version }}"
+        echo "✅ Docker images published to GitHub Container Registry"
+        echo "✅ GitHub Release created with assets"
 
     - name: Release summary
       run: |
