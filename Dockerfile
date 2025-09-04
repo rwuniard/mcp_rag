@@ -83,9 +83,11 @@ ENV PATH="/app/bin:$PATH" \
 COPY src/rag_fetch/.env_template /app/.env_template
 
 # Generate .env file with real API key from build argument
-RUN cp /app/.env_template /app/.env \
-    && sed -i "s/your_google_api_key_here/${GOOGLE_API_KEY}/g" /app/.env \
-    && chmod 600 /app/.env
+# Place it where the installed package expects it (/app/rag_fetch/.env)
+RUN mkdir -p /app/rag_fetch \
+    && cp /app/.env_template /app/rag_fetch/.env \
+    && sed -i "s/your_google_api_key_here/${GOOGLE_API_KEY}/g" /app/rag_fetch/.env \
+    && chmod 600 /app/rag_fetch/.env
 
 # Create directories for data and logs
 RUN mkdir -p /app/data /app/logs \
