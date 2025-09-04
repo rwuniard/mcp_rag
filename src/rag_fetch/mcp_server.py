@@ -15,6 +15,7 @@ from fastmcp import FastMCP
 from rag_fetch.config import config
 from rag_fetch.connection_manager import connection_manager
 from rag_fetch.search_similarity import ModelVendor, similarity_search_mcp_tool
+from rag_fetch._version import __version__, get_version_info
 
 # Configure logging
 logging.basicConfig(
@@ -108,17 +109,27 @@ def search_documents(query: str, limit: int = 6) -> str:
 @mcp.tool
 def server_status() -> str:
     """
-    Get current server status and connection metrics.
+    Get current server status and connection metrics with version information.
     
     Returns:
-        JSON string containing server status and connection information
+        JSON string containing server status, version, and connection information
     """
     import json
+    from datetime import datetime
+    
+    version_info = get_version_info()
     
     status = {
         "server_name": config.server_name,
+        "version": version_info["version"],
+        "git_info": {
+            "sha": version_info["git_sha"],
+            "branch": version_info["git_branch"],
+            "dirty": version_info["git_dirty"],
+        },
+        "timestamp": datetime.utcnow().isoformat() + "Z",
         "transport": config.transport.value,
-        "status": "running",
+        "status": "healthy",
         "config": {
             "host": config.host if config.is_network_transport else None,
             "port": config.port if config.is_network_transport else None,
@@ -171,7 +182,13 @@ def setup_signal_handlers():
 
 def main():
     """Entry point for the MCP server."""
-    # Print configuration
+    # Print version and configuration
+    version_info = get_version_info()
+    logger.info(f"🚀 RAG Fetch MCP Server v{version_info['version']} starting...")
+    if version_info['git_sha']:
+        logger.info(f"📦 Git SHA: {version_info['git_sha']}")
+        if version_info['git_branch']:
+            logger.info(f"🌿 Git Branch: {version_info['git_branch']}")
     logger.info(f"\n{config}")
     
     # Setup signal handlers for graceful shutdown

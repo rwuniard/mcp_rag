@@ -16,13 +16,28 @@ if __name__ == "__main__":
 
 try:
     from .search_similarity import ModelVendor, similarity_search_mcp_tool
+    from ._version import __version__, get_version_info
 except ImportError:
     # Fallback for direct execution
     from search_similarity import ModelVendor, similarity_search_mcp_tool
+    from _version import __version__, get_version_info
 
 
 def main():
+    # Handle version flag
+    if len(sys.argv) > 1 and sys.argv[1] in ["--version", "-v"]:
+        version_info = get_version_info()
+        print(f"rag-fetch version {version_info['version']}")
+        if version_info['git_sha']:
+            print(f"Git SHA: {version_info['git_sha']}")
+            if version_info['git_branch']:
+                print(f"Git Branch: {version_info['git_branch']}")
+            if version_info['git_dirty']:
+                print("Status: dirty (uncommitted changes)")
+        return
+
     print("🤖 MCP RAG - Retrieval Augmented Generation with MCP")
+    print(f"Version: {__version__}")
     print("=" * 50)
 
     if len(sys.argv) > 1:
@@ -44,11 +59,12 @@ def main():
             )
     else:
         print("Usage:")
-        print("  python main.py <search query>     # Search documents")
-        print("  python mcp_server.py              # Start MCP server")
+        print("  rag-fetch-cli --version           # Show version info")
+        print("  rag-fetch-cli <search query>     # Search documents")
+        print("  rag-mcp-server                   # Start MCP server")
         print()
         print("Example:")
-        print("  python main.py 'interesting facts about English'")
+        print("  rag-fetch-cli 'interesting facts about English'")
 
 
 if __name__ == "__main__":

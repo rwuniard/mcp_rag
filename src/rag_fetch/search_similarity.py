@@ -72,15 +72,6 @@ def get_chromadb_client() -> chromadb.Client:
 
 
 # Legacy function removed - using ChromaDB server mode instead of file-based storage
-# def ensure_chroma_directory(model_vendor: ModelVendor) -> Path:
-#     """Ensure the Chroma database directory exists for the specified model vendor."""
-#     if model_vendor == ModelVendor.OPENAI:
-#         db_path = DATA_DIR / "chroma_db_openai"
-#     elif model_vendor == ModelVendor.GOOGLE:
-#         db_path = DATA_DIR / "chroma_db_google"
-#     else:
-#         raise ValueError(f"Unsupported model vendor: {model_vendor}")
-#     return db_path
 
 
 def load_embedding_model(model_vendor: ModelVendor):
