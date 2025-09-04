@@ -100,11 +100,23 @@ jobs:
         BASE_VERSION=$(echo "$CURRENT_VERSION" | sed 's/\.dev.*//g' | sed 's/+.*//g')
         echo "Base version: $BASE_VERSION"
         
+        # Validate base version format
+        if [[ ! "$BASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "Warning: Base version '$BASE_VERSION' doesn't match expected format. Using fallback."
+          BASE_VERSION="0.1.5"  # Use last known good version as fallback
+        fi
+        
         # Simple version bumping
         IFS='.' read -ra VERSION_PARTS <<< "$BASE_VERSION"
-        MAJOR=${VERSION_PARTS[0]}
+        MAJOR=${VERSION_PARTS[0]:-0}
         MINOR=${VERSION_PARTS[1]:-0}
         PATCH=${VERSION_PARTS[2]:-0}
+        
+        # Validate that we got numeric values
+        if [[ ! "$MAJOR" =~ ^[0-9]+$ ]] || [[ ! "$MINOR" =~ ^[0-9]+$ ]] || [[ ! "$PATCH" =~ ^[0-9]+$ ]]; then
+          echo "Error: Failed to parse version numbers. MAJOR=$MAJOR, MINOR=$MINOR, PATCH=$PATCH"
+          exit 1
+        fi
         
         case $BUMP_TYPE in
           major)
@@ -123,15 +135,27 @@ jobs:
         
         NEW_VERSION="$MAJOR.$MINOR.$PATCH"
         echo "New version: $NEW_VERSION"
+        
+        # Final validation of new version
+        if [[ ! "$NEW_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "Error: Generated version '$NEW_VERSION' is not valid"
+          exit 1
+        fi
+        
         echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
         
         # Create the Git tag (this will make setuptools_scm use this version)
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git tag "v$NEW_VERSION"
-        git push origin "v$NEW_VERSION"
         
-        echo "✅ Created and pushed tag: v$NEW_VERSION"
+        # Check if tag already exists
+        if git tag -l "v$NEW_VERSION" | grep -q "v$NEW_VERSION"; then
+          echo "Tag v$NEW_VERSION already exists, skipping tag creation"
+        else
+          git tag "v$NEW_VERSION"
+          git push origin "v$NEW_VERSION"
+          echo "✅ Created and pushed tag: v$NEW_VERSION"
+        fi
 
     - name: Build package
       run: |
