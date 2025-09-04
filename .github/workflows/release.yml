@@ -217,55 +217,17 @@ jobs:
         path: dist/
 
     - name: Generate release notes
-      id: release_notes
+      id: release_notes  
       run: |
-        echo "📝 Generating release notes..."
-        
-        # Get latest tag
-        LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-        
-        if [ -z "$LATEST_TAG" ]; then
-          echo "No previous tags found, generating initial release notes..."
-          RELEASE_NOTES="## 🎉 Initial Release
-
-This is the first release of the MCP RAG system.
-
-### Features
-- 📄 Document processing for PDF, DOCX, and text files  
-- 🔍 Semantic search and similarity matching
-- 🤖 Model Context Protocol (MCP) server integration
-- 🧪 Comprehensive test suite with coverage reporting
-- 🚀 CI/CD pipeline with trunk-based development
-
-### Components
-- **rag-store**: Document processing and storage
-- **rag-fetch**: Search and retrieval functionality  
-- **MCP Server**: Integration with Claude and other AI tools
-
-See README.md for installation and usage instructions."
-        else
-          echo "Generating release notes since $LATEST_TAG..."
-          RELEASE_NOTES="## 🚀 Release ${{ needs.build-and-publish.outputs.version }}
-
-### Changes since $LATEST_TAG
-
-$(git log $LATEST_TAG..HEAD --oneline --pretty=format:'- %s')
-
-### Statistics
-- Commits: $(git rev-list $LATEST_TAG..HEAD --count)
-- Files changed: $(git diff $LATEST_TAG..HEAD --name-only | wc -l)
-
----
-Built from commit: \`${{ github.sha }}\`"
-        fi
-        
-        # Write to file for GitHub release
-        echo "$RELEASE_NOTES" > release-notes.md
-        
-        # Also output for next step
-        echo "RELEASE_NOTES<<EOF" >> $GITHUB_OUTPUT
-        echo "$RELEASE_NOTES" >> $GITHUB_OUTPUT
-        echo "EOF" >> $GITHUB_OUTPUT
+        echo "📝 Generating simple release notes..."
+        echo "## 🚀 Release v${{ needs.build-and-publish.outputs.version }}" > release-notes.md
+        echo "" >> release-notes.md
+        echo "Automated release with GitHub Container Registry integration." >> release-notes.md
+        echo "" >> release-notes.md
+        echo "### Changes" >> release-notes.md
+        git log --oneline -5 --pretty=format:'- %s' >> release-notes.md
+        echo "" >> release-notes.md
+        echo "Built from commit: \`${{ github.sha }}\`" >> release-notes.md
 
     - name: Create GitHub Release
       run: |
