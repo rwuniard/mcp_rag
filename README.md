@@ -116,11 +116,12 @@ python run_coverage.py --html-only --open
 - `uv run python mcp_server.py` - Start MCP server
 
 **ChromaDB Server Management**:
-- `./scripts/chromadb-server.sh start` - Start ChromaDB server
-- `./scripts/chromadb-server.sh stop` - Stop ChromaDB server  
-- `./scripts/chromadb-server.sh status` - Check server status
-- `./scripts/chromadb-server.sh health` - Check server health
-- `./scripts/chromadb-server.sh logs` - View server logs
+- `./local_docker_deployment/chromadb-server.sh start` - Start ChromaDB server (Linux/macOS)
+- `chromadb-server.bat start` - Start ChromaDB server (Windows)
+- `./local_docker_deployment/chromadb-server.sh stop` - Stop ChromaDB server (Linux/macOS)
+- `chromadb-server.bat stop` - Stop ChromaDB server (Windows)
+- `./local_docker_deployment/chromadb-server.sh health` - Check server health (Linux/macOS)
+- `chromadb-server.bat health` - Check server health (Windows)
 
 **RAG Operations**:
 - `python main.py store` - Store text and PDF documents to ChromaDB (RAG Store service)
@@ -130,9 +131,15 @@ python run_coverage.py --html-only --open
 - `rag-fetch-cli "<query>"` - Direct access to search service
 - `rag-mcp-server` - Direct access to MCP server
 
+**MCP Server Deployment**:
+- `./local_docker_deployment/deploy-mcp-server.sh` - Deploy MCP server (Linux/macOS)
+- `deploy-mcp-server.bat` - Deploy MCP server (Windows)
+
 **MCP Server Health Monitoring**:
 - `curl http://localhost:8080/health` - Check MCP server health status (JSON response)
 - Docker healthcheck automatically monitors server health every 30 seconds
+
+**Windows Users**: See `local_docker_deployment/README-Windows.md` for detailed Windows-specific instructions.
 
 **Testing & Quality**:
 - `python run_html_coverage.py --open` - Run tests with HTML coverage and open report (recommended)
