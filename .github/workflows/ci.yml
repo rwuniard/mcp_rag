@@ -121,7 +121,7 @@ jobs:
       - name: Create test environment file
         run: |
           cat > .env << EOF
-          GOOGLE_API_KEY=test_key_for_ci
+          GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}
           OPENAI_API_KEY=test_key_for_ci
           EOF
 
@@ -248,7 +248,7 @@ jobs:
       - name: Create test environment file
         run: |
           cat > .env << EOF
-          GOOGLE_API_KEY=test_key_for_ci
+          GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}
           OPENAI_API_KEY=test_key_for_ci
           EOF
 

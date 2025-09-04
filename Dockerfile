@@ -7,6 +7,9 @@ ARG GIT_COMMIT
 ARG GIT_BRANCH=main
 ARG VERSION
 
+# Build argument for Google API Key
+ARG GOOGLE_API_KEY
+
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -71,6 +74,11 @@ COPY --from=builder /app/dist/*.whl /tmp/
 # Install the package and runtime dependencies only
 RUN pip install --no-cache-dir /tmp/*.whl \
     && rm -rf /tmp/*.whl /root/.cache/pip
+
+# Generate .env file with real API key from build argument
+RUN cp /app/.env_template /app/.env \
+    && sed -i "s/your_google_api_key_here/${GOOGLE_API_KEY}/g" /app/.env \
+    && chmod 600 /app/.env
 
 # Create directories for data and logs
 RUN mkdir -p /app/data /app/logs \

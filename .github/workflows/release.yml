@@ -120,6 +120,42 @@ jobs:
         uv build
         ls -la dist/
 
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build and push Docker image to GitHub Container Registry
+      run: |
+        echo "🐳 Building Docker image with secrets for GitHub Container Registry..."
+        
+        # Convert repository name to lowercase for ghcr.io
+        REPO_NAME=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+        IMAGE_NAME="ghcr.io/${REPO_NAME}"
+        
+        echo "📋 Building image: ${IMAGE_NAME}"
+        
+        docker build \
+          --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
+          --build-arg GIT_COMMIT=${{ github.sha }} \
+          --build-arg GIT_BRANCH=${{ github.ref_name }} \
+          --build-arg VERSION=${{ steps.version.outputs.version }} \
+          --build-arg GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }} \
+          --target production \
+          -t ${IMAGE_NAME}:${{ steps.version.outputs.version }} \
+          -t ${IMAGE_NAME}:latest \
+          .
+        
+        echo "📤 Pushing Docker images to GitHub Container Registry..."
+        docker push ${IMAGE_NAME}:${{ steps.version.outputs.version }}
+        docker push ${IMAGE_NAME}:latest
+        
+        echo "✅ Docker images pushed successfully:"
+        echo "   - ${IMAGE_NAME}:${{ steps.version.outputs.version }}"
+        echo "   - ${IMAGE_NAME}:latest"
+
     - name: Publish to TestPyPI
       if: github.event_name == 'workflow_dispatch'
       run: |
