@@ -91,35 +91,42 @@ mcp.add_middleware(connection_tracking_middleware)
 
 
 # Add health endpoint for Docker healthcheck
-@mcp.get("/health")
-def health_check():
+@mcp.custom_route("/health", methods=["GET"])
+async def health_check(request):
     """
     HTTP health check endpoint for Docker container health monitoring.
     
+    Args:
+        request: Starlette request object
+        
     Returns:
-        Simple OK response indicating server is healthy
+        JSON response indicating server health status
     """
     from datetime import datetime, timezone
+    from starlette.responses import JSONResponse
     
     # Basic health check - verify server is responding and can access ChromaDB
     try:
         # Try to get connection metrics (validates internal state)
         metrics = connection_manager.get_metrics()
         
-        return {
+        response_data = {
             "status": "healthy",
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "server": config.server_name,
             "version": __version__,
             "connections": metrics.get("total_connections", 0)
         }
+        return JSONResponse(response_data)
+        
     except Exception as e:
         # Return error status if health check fails
-        return {
+        error_data = {
             "status": "unhealthy", 
             "error": str(e),
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
+        return JSONResponse(error_data, status_code=503)
 
 
 @mcp.tool

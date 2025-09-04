@@ -130,6 +130,10 @@ python run_coverage.py --html-only --open
 - `rag-fetch-cli "<query>"` - Direct access to search service
 - `rag-mcp-server` - Direct access to MCP server
 
+**MCP Server Health Monitoring**:
+- `curl http://localhost:8080/health` - Check MCP server health status (JSON response)
+- Docker healthcheck automatically monitors server health every 30 seconds
+
 **Testing & Quality**:
 - `python run_html_coverage.py --open` - Run tests with HTML coverage and open report (recommended)
 - `uv run pytest --cov=src --cov-report=html` - Direct pytest with HTML coverage  
