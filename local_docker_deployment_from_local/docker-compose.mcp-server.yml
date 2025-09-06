@@ -1,0 +1,58 @@
+name: mcp-network
+
+services:
+  mcp-rag-server:
+    build:
+      context: ..
+      target: production
+      args:
+        - BUILD_DATE=${BUILD_DATE:-$(date -u +"%Y-%m-%dT%H:%M:%SZ")}
+        - GIT_COMMIT=${GIT_COMMIT:-$(git rev-parse --short HEAD)}
+        - GIT_BRANCH=${GIT_BRANCH:-$(git rev-parse --abbrev-ref HEAD)}
+        - VERSION=${VERSION:-$(git describe --tags --always)}
+    container_name: mcp-rag-server-local
+    ports:
+      - "8080:8080"
+    environment:
+      # MCP Server Configuration
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8080
+      - MCP_TRANSPORT=http
+      - MCP_SERVER_NAME=RAG Fetch MCP Server (Local Build)
+      - MCP_MAX_CONNECTIONS=100
+      
+      # ChromaDB Configuration
+      - CHROMADB_HOST=chromadb
+      - CHROMADB_PORT=8000
+      - CHROMADB_SSL=false
+      
+      # Logging
+      - LOG_LEVEL=INFO
+      
+      # AI API Keys (set in .env file or environment)
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+    volumes:
+      - ../src/rag_fetch/.env:/app/.env:ro
+    depends_on:
+      chromadb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - mcp-network
+    labels:
+      - "service=rag-fetch-local"
+      - "version=${VERSION:-latest}"
+      - "git.commit=${GIT_COMMIT:-unknown}"
+      - "build.type=local"
+
+networks:
+  mcp-network:
+    name: mcp-network
+    external: true
