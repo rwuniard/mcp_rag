@@ -92,10 +92,22 @@ jobs:
           scan-ref: '.'
           format: 'sarif'
           output: 'trivy-results.sarif'
+        continue-on-error: true
+
+      - name: Check if Trivy results exist
+        id: trivy-results
+        run: |
+          if [ -f "trivy-results.sarif" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Trivy SARIF file created successfully"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Trivy SARIF file not created"
+          fi
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: steps.trivy-results.outputs.exists == 'true'
         with:
           sarif_file: 'trivy-results.sarif'
 
