@@ -26,7 +26,7 @@ dependencies = [
     "langchain-google-genai>=2.0.10",
     "langchain-openai>=0.3.30",
     "python-dotenv>=1.1.1",
-    "pypdf>=5.1.0",
+    "pypdf>=6.0.0",
     "structlog>=25.4.0",
     "prometheus-client>=0.22.1",
     "pymupdf>=1.26.4",
@@ -203,6 +203,11 @@ indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
 
+
+[[tool.uv.index]]
+name = "safety"
+url = "https://pkgs.safetycli.com/repository/none-e669f/project/mcp_rag/pypi/simple/"
+default = false
 [dependency-groups]
 dev = [
     "coverage>=7.10.4",
