@@ -77,9 +77,13 @@ jobs:
           uv run ruff check . --select=S --output-format=github
         continue-on-error: true
 
-      - name: Check dependencies for known vulnerabilities
-        run: uv run safety check --json
-        continue-on-error: true
+      - name: Check dependencies for known vulnerabilities with Safety CLI
+        env:
+          SAFETY_API_KEY: ${{ secrets.SAFETY_API_KEY }}
+        run: |
+          echo "🔍 Scanning dependencies for known vulnerabilities..."
+          uv run safety scan --output json
+        continue-on-error: false
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
