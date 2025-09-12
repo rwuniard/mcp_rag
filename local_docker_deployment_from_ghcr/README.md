@@ -2,11 +2,14 @@
 
 Simple scripts to deploy the MCP RAG server locally using the production Docker images from GitHub Container Registry.
 
+**Note:** ChromaDB server management has been moved to the kiro-project. This deployment now focuses on the MCP RAG server only.
+
 ## Quick Start
 
-### 1. Start ChromaDB
+### 1. Start ChromaDB (via kiro-project)
 ```bash
-./setup_chroma_db/chromadb-server.sh start
+# ChromaDB server management is now handled by kiro-project
+# Please refer to kiro-project documentation for ChromaDB setup
 ```
 
 ### 2. Deploy MCP RAG Server
@@ -20,20 +23,17 @@ Simple scripts to deploy the MCP RAG server locally using the production Docker 
 
 ## Scripts Overview
 
-### ChromaDB Management (`setup_chroma_db/chromadb-server.sh`)
-- **Purpose**: Manages ChromaDB vector database
-- **Network**: Creates and uses `mcp-network`
-- **Container**: `chromadb`
-- **Data**: Persisted in `setup_chroma_db/data/chroma_data/`
+### ChromaDB Management (Moved to kiro-project)
+- **Purpose**: ChromaDB server management is now handled by kiro-project
+- **Setup**: Use kiro-project tools to manage ChromaDB server
+- **Network**: Ensure `mcp-network` exists for container communication
+- **Data**: ChromaDB data persistence is managed by kiro-project
 
-**Commands:**
-- `start` - Start ChromaDB server
-- `stop` - Stop ChromaDB server
-- `restart` - Restart ChromaDB server
-- `status` - Show server status
-- `logs` - Show server logs
-- `health` - Check server health
-- `clean` - Stop and remove all data (DANGEROUS)
+Please refer to kiro-project documentation for:
+- Starting and stopping ChromaDB server
+- Health monitoring and status checks
+- Log viewing and troubleshooting
+- Data management and cleanup
 
 ### MCP Server Deployment (`scripts/deploy-mcp-server.sh`)
 - **Purpose**: Deploys production MCP RAG server
@@ -51,10 +51,10 @@ Simple scripts to deploy the MCP RAG server locally using the production Docker 
 ## Deployment Flow
 
 ```
-1. ChromaDB Setup
-   ├─ Creates mcp-network
-   ├─ Starts chromadb container
-   └─ Exposes port 8000
+1. ChromaDB Setup (via kiro-project)
+   ├─ Use kiro-project to create mcp-network
+   ├─ Use kiro-project to start chromadb container
+   └─ Ensure ChromaDB is accessible on port 8000
 
 2. MCP Server Deployment
    ├─ Verifies network exists
@@ -79,14 +79,14 @@ Simple scripts to deploy the MCP RAG server locally using the production Docker 
 
 ### MCP Server Won't Start
 ```bash
-# Check ChromaDB is running
-./setup_chroma_db/chromadb-server.sh status
+# Check ChromaDB is running (use kiro-project tools)
+# Refer to kiro-project documentation for status checks
 
-# Check logs
+# Check MCP server logs
 docker logs mcp-rag-server
 
-# Restart ChromaDB
-./setup_chroma_db/chromadb-server.sh restart
+# Restart ChromaDB using kiro-project tools
+# Refer to kiro-project documentation for restart commands
 ```
 
 ### Network Issues
@@ -106,6 +106,6 @@ docker stop mcp-rag-server chromadb
 docker rm mcp-rag-server chromadb
 
 # Start fresh
-./setup_chroma_db/chromadb-server.sh start
+# Use kiro-project to start ChromaDB server
 ./scripts/deploy-mcp-server.sh
 ```

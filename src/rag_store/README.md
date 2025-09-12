@@ -85,11 +85,11 @@ Supported formats:
 
 Start the ChromaDB server before storing documents:
 ```bash
-# Start ChromaDB server (from project root)
-./scripts/chromadb-server.sh start
+# Start ChromaDB server using kiro-project tools
+# Refer to kiro-project documentation for ChromaDB setup
 
-# Check server health
-./scripts/chromadb-server.sh health
+# Check server health using kiro-project tools
+# Refer to kiro-project documentation for health checks
 ```
 
 ### 5. Run Document Ingestion
@@ -387,10 +387,10 @@ python main.py store
 ### **Check Processing Results**
 ```bash
 # Check ChromaDB server status
-./scripts/chromadb-server.sh status
+# Use kiro-project tools to check ChromaDB status
 
 # Check server health
-./scripts/chromadb-server.sh health
+# Use kiro-project tools to check ChromaDB health
 
 # View server data directory
 ls data/chroma_data/

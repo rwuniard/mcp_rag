@@ -21,7 +21,7 @@ docker network ls | findstr "%NETWORK_NAME%" >nul
 if errorlevel 1 (
     echo ❌ Network '%NETWORK_NAME%' does not exist
     echo 💡 Please run ChromaDB setup first:
-    echo    chromadb-server.bat start
+    echo    Use kiro-project to start ChromaDB server
     exit /b 1
 )
 echo ✅ Network '%NETWORK_NAME%' exists
@@ -33,7 +33,7 @@ docker ps | findstr "chromadb" >nul
 if errorlevel 1 (
     echo ❌ ChromaDB is not running
     echo 💡 Please start ChromaDB first:
-    echo    chromadb-server.bat start
+    echo    Use kiro-project to start ChromaDB server
     exit /b 1
 )
 echo ✅ ChromaDB is running
@@ -76,7 +76,7 @@ if errorlevel 1 (
     docker logs "%MCP_CONTAINER%"
     echo.
     echo 💡 Troubleshooting:
-    echo   1. Check if ChromaDB is healthy: chromadb-server.bat health
+    echo   1. Check if ChromaDB is healthy: Use kiro-project health check
     echo   2. Check container status: docker ps -a
     echo   3. Check network: docker network ls
     exit /b 1
@@ -111,7 +111,7 @@ if errorlevel 1 (
     echo   View logs:    docker logs -f %MCP_CONTAINER%
     echo   Stop server:  docker stop %MCP_CONTAINER%
     echo   Restart:      %~nx0
-    echo   Stop ChromaDB: chromadb-server.bat stop
+    echo   Stop ChromaDB: Use kiro-project tools
     echo.
 )
 

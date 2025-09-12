@@ -35,7 +35,7 @@ echo -e "\n${YELLOW}📡 Checking Docker network...${NC}"
 if ! network_exists "$NETWORK_NAME"; then
     echo -e "${RED}❌ Network '$NETWORK_NAME' does not exist${NC}"
     echo -e "${YELLOW}💡 Please run ChromaDB setup first:${NC}"
-    echo "   ./setup_chroma_db/chromadb-server.sh start"
+    echo "   Use kiro-project to start ChromaDB server"
     exit 1
 fi
 echo -e "${GREEN}✅ Network '$NETWORK_NAME' exists${NC}"
@@ -45,7 +45,7 @@ echo -e "\n${YELLOW}🗄️  Checking ChromaDB...${NC}"
 if ! is_container_running "chromadb"; then
     echo -e "${RED}❌ ChromaDB is not running${NC}"
     echo -e "${YELLOW}💡 Please start ChromaDB first:${NC}"
-    echo "   ./setup_chroma_db/chromadb-server.sh start"
+    echo "   Use kiro-project to start ChromaDB server"
     exit 1
 fi
 echo -e "${GREEN}✅ ChromaDB is running${NC}"
@@ -98,14 +98,14 @@ if is_container_running "$MCP_CONTAINER"; then
     echo "  View logs:    docker logs -f $MCP_CONTAINER"
     echo "  Stop server:  docker stop $MCP_CONTAINER"
     echo "  Restart:      $0"
-    echo "  Stop ChromaDB: ./setup_chroma_db/chromadb-server.sh stop"
+    echo "  Stop ChromaDB: Use kiro-project tools"
     echo ""
 else
     echo -e "${RED}❌ MCP RAG server failed to start${NC}"
     echo -e "${YELLOW}📋 Container logs:${NC}"
     docker logs "$MCP_CONTAINER"
     echo -e "\n${YELLOW}💡 Troubleshooting:${NC}"
-    echo "  1. Check if ChromaDB is healthy: ./setup_chroma_db/chromadb-server.sh health"
+    echo "  1. Check if ChromaDB is healthy: Use kiro-project health check"
     echo "  2. Check container status: docker ps -a"
     echo "  3. Check network: docker network ls"
     exit 1

@@ -748,7 +748,7 @@ class TestGetChromaDBClient(unittest.TestCase):
         error_msg = str(context.exception)
         self.assertIn("Cannot connect to ChromaDB server", error_msg)
         self.assertIn("Connection refused", error_msg)
-        self.assertIn("chromadb-server.sh start", error_msg)
+        self.assertIn("kiro-project", error_msg)
 
     @patch("rag_fetch.search_similarity.chromadb.HttpClient")
     def test_get_chromadb_client_heartbeat_failure(self, mock_http_client):

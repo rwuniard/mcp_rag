@@ -611,7 +611,7 @@ AI: [Uses search_documents tool] Here are some fascinating animal facts I found.
 - **Client-Server Architecture**: HTTP clients connect to centralized ChromaDB server
 - **Multiple Models**: Support for both Google and OpenAI embeddings
 - **Document Types**: Handles both text (.txt) and PDF (.pdf) files with optimized processing
-- **Server Management**: Easy start/stop/status commands via `./scripts/chromadb-server.sh`
+- **Server Management**: ChromaDB server management now handled by kiro-project
 
 ### Testing & Quality
 - **Comprehensive Tests**: 168 unit tests covering all document types, OCR, MHT, and complete dependency stack

@@ -33,10 +33,10 @@ CHROMADB_COLLECTION_NAME=langchain
 Start the ChromaDB server before searching:
 ```bash
 # Start ChromaDB server (from project root)
-./scripts/chromadb-server.sh start
+# Use kiro-project tools to start ChromaDB server
 
 # Check server health
-./scripts/chromadb-server.sh health
+# Use kiro-project tools to check ChromaDB health
 ```
 
 ### 3. Ensure Documents are Indexed
@@ -345,7 +345,7 @@ ModelVendor.OPENAI
 ### **ChromaDB Server**
 - **Server URL**: `http://localhost:8000`
 - **Data Storage**: `../../../data/chroma_data/`
-- **Management**: `./scripts/chromadb-server.sh`
+- **Management**: Use kiro-project tools for ChromaDB management
 
 ## 🔧 API Reference
 
@@ -564,10 +564,10 @@ python-dotenv = ">=1.1.1"
 **"Cannot connect to ChromaDB server" error**:
 ```bash
 # Solution: Start ChromaDB server first
-./scripts/chromadb-server.sh start
+# Use kiro-project tools to start ChromaDB server
 
 # Check server health
-./scripts/chromadb-server.sh health
+# Use kiro-project tools to check ChromaDB health
 ```
 
 **"API key required" error**:
@@ -579,7 +579,7 @@ echo "GOOGLE_API_KEY=your_key_here" >> .env
 **No search results**:
 ```bash
 # Check if ChromaDB server is running
-./scripts/chromadb-server.sh status
+# Use kiro-project tools to check ChromaDB status
 
 # If no documents, run document ingestion
 python main.py store
@@ -590,7 +590,7 @@ python main.py store
 **MCP server not seeing new documents**:
 ```bash
 # Check ChromaDB server status
-./scripts/chromadb-server.sh health
+# Use kiro-project tools to check ChromaDB health
 
 # Test search directly
 python src/rag_fetch/search_similarity.py
@@ -600,13 +600,13 @@ python src/rag_fetch/search_similarity.py
 **Connection timeout errors**:
 ```bash
 # Check if server is running
-./scripts/chromadb-server.sh status
+# Use kiro-project tools to check ChromaDB status
 
 # Check server logs for issues
-./scripts/chromadb-server.sh logs
+# Use kiro-project tools to view ChromaDB logs
 
 # Restart server if needed
-./scripts/chromadb-server.sh restart
+# Use kiro-project tools to restart ChromaDB
 ```
 
 **Performance issues**:

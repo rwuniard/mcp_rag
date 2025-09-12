@@ -217,8 +217,8 @@ def get_chromadb_client() -> chromadb.Client:
             f"❌ Cannot connect to ChromaDB server at {CHROMADB_URL}\n"
             f"Error: {e}\n\n"
             f"💡 Please ensure ChromaDB server is running:\n"
-            f"   ./scripts/chromadb-server.sh start\n"
-            f"   or: ./setup_chroma_db/chromadb-server.sh start"
+            f"   Use kiro-project to start ChromaDB server\n"
+            f"   Refer to kiro-project documentation for setup"
         )
         logger.error("Failed to connect to ChromaDB server", 
                     url=CHROMADB_URL, error=str(e))
