@@ -51,8 +51,8 @@ rag-mcp-server
    cp src/rag_store/.env_template src/rag_store/.env
    # Add your GOOGLE_API_KEY to both .env files
    
-   # Start ChromaDB server
-   ./scripts/chromadb-server.sh start
+   # Start ChromaDB server (setup moved to kiro-project)
+   # See kiro-project documentation for ChromaDB server management
    ```
 
 2. **Store Documents**:
@@ -116,12 +116,8 @@ python run_coverage.py --html-only --open
 - `uv run python mcp_server.py` - Start MCP server
 
 **ChromaDB Server Management**:
-- `./local_docker_deployment/chromadb-server.sh start` - Start ChromaDB server (Linux/macOS)
-- `chromadb-server.bat start` - Start ChromaDB server (Windows)
-- `./local_docker_deployment/chromadb-server.sh stop` - Stop ChromaDB server (Linux/macOS)
-- `chromadb-server.bat stop` - Stop ChromaDB server (Windows)
-- `./local_docker_deployment/chromadb-server.sh health` - Check server health (Linux/macOS)
-- `chromadb-server.bat health` - Check server health (Windows)
+- ChromaDB server management is now handled by kiro-project
+- See kiro-project documentation for server setup and management
 
 **RAG Operations**:
 - `python main.py store` - Store text and PDF documents to ChromaDB (RAG Store service)
@@ -139,7 +135,7 @@ python run_coverage.py --html-only --open
 - `curl http://localhost:8080/health` - Check MCP server health status (JSON response)
 - Docker healthcheck automatically monitors server health every 30 seconds
 
-**Windows Users**: See `local_docker_deployment/README-Windows.md` for detailed Windows-specific instructions.
+**Windows Users**: ChromaDB server setup is now covered in kiro-project documentation.
 
 **Testing & Quality**:
 - `python run_html_coverage.py --open` - Run tests with HTML coverage and open report (recommended)
@@ -181,11 +177,8 @@ mcp_rag/
 │       └── test_search_similarity.py
 ├── data/                     # Runtime databases and server storage
 │   └── chroma_data/         # ChromaDB server persistent storage
-├── scripts/                  # Server management utilities
-│   └── chromadb-server.sh   # ChromaDB server management wrapper
-├── setup_chroma_db/          # ChromaDB server setup and configuration
-│   ├── chromadb-server.sh   # Main ChromaDB server management script
-│   └── docker-compose.yml   # ChromaDB server Docker configuration
+├── scripts/                  # (ChromaDB server management moved to kiro-project)
+├── setup_chroma_db/          # (ChromaDB server setup moved to kiro-project)
 ├── main.py                  # Convenience router (store|search|server)
 ├── run_coverage.py          # Full-featured coverage tool (legacy)
 ├── run_html_coverage.py     # Simple HTML coverage runner
@@ -578,7 +571,8 @@ rag-mcp-server
 
 2. **Start ChromaDB server**:
    ```bash
-   ./scripts/chromadb-server.sh start
+   # ChromaDB server setup is now handled by kiro-project
+   # See kiro-project documentation for server management
    ```
 
 ### Available MCP Tools

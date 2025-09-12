@@ -2,6 +2,8 @@
 
 Windows batch file equivalents of the Linux/macOS shell scripts for deploying the MCP RAG system.
 
+**Note:** ChromaDB server management has been moved to the kiro-project. This document now covers only MCP RAG server deployment.
+
 ## Prerequisites
 
 - **Docker Desktop** installed and running
@@ -10,37 +12,21 @@ Windows batch file equivalents of the Linux/macOS shell scripts for deploying th
 
 ## Files
 
-- `chromadb-server.bat` - ChromaDB server management 
 - `deploy-mcp-server.bat` - MCP RAG server deployment
-- `docker-compose.yml` - ChromaDB configuration
+- `docker-compose.yml` - ChromaDB configuration (managed by kiro-project)
 - `docker-compose.mcp-server.yml` - MCP server configuration
+
+**Note:** ChromaDB server management (`chromadb-server.bat`) is now handled by kiro-project.
 
 ## Usage
 
-### 1. ChromaDB Server Management
+### 1. ChromaDB Server Management (Moved to kiro-project)
 
-```batch
-REM Start ChromaDB server
-chromadb-server.bat start
-
-REM Check server health
-chromadb-server.bat health
-
-REM View server logs
-chromadb-server.bat logs
-
-REM Stop server
-chromadb-server.bat stop
-
-REM Restart server
-chromadb-server.bat restart
-
-REM Show status
-chromadb-server.bat status
-
-REM Clean all data (DANGEROUS!)
-chromadb-server.bat clean
-```
+ChromaDB server management is now handled by the kiro-project. Please refer to kiro-project documentation for:
+- Starting and stopping ChromaDB server
+- Health checks and monitoring
+- Log viewing and troubleshooting
+- Data management and cleanup
 
 ### 2. MCP RAG Server Deployment
 
@@ -51,15 +37,13 @@ deploy-mcp-server.bat
 
 ## Step-by-Step Deployment
 
-1. **Start ChromaDB first:**
-   ```batch
-   chromadb-server.bat start
-   ```
+1. **Start ChromaDB server (via kiro-project):**
+   - Use kiro-project tools to start ChromaDB server
+   - Refer to kiro-project documentation for specific commands
 
 2. **Verify ChromaDB is healthy:**
-   ```batch
-   chromadb-server.bat health
-   ```
+   - Use kiro-project health check commands
+   - Ensure ChromaDB is accessible at http://localhost:8000
 
 3. **Deploy MCP RAG server:**
    ```batch
