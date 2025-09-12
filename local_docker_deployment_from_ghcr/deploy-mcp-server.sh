@@ -53,7 +53,7 @@ echo -e "${GREEN}✅ ChromaDB is running${NC}"
 # Step 3: Stop existing MCP server if running
 echo -e "\n${YELLOW}🔄 Checking existing MCP RAG server...${NC}"
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-docker-compose -f "$SCRIPT_DIR/docker-compose.mcp-server.yml" down 2>/dev/null || true
+docker compose -f "$SCRIPT_DIR/docker-compose.mcp-server.yml" down 2>/dev/null || true
 echo -e "${GREEN}✅ Previous MCP server stopped${NC}"
 
 # Step 4: Pull latest production image
@@ -64,7 +64,7 @@ echo -e "${GREEN}✅ Latest production image pulled${NC}"
 
 # Step 5: Start MCP RAG server with docker-compose
 echo -e "\n${YELLOW}🚀 Starting MCP RAG server...${NC}"
-docker-compose -f "$SCRIPT_DIR/docker-compose.mcp-server.yml" up -d mcp-rag-server
+docker compose -f "$SCRIPT_DIR/docker-compose.mcp-server.yml" up -d mcp-rag-server
 
 # Step 6: Wait and verify
 echo -e "${YELLOW}⏳ Waiting for MCP RAG server to start...${NC}"

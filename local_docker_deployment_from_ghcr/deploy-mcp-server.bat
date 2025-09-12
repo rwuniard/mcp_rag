@@ -41,7 +41,7 @@ echo ✅ ChromaDB is running
 REM Step 3: Stop existing MCP server if running
 echo.
 echo 🔄 Checking existing MCP RAG server...
-docker-compose -f "%SCRIPT_DIR%docker-compose.mcp-server.yml" down >nul 2>&1
+docker compose -f "%SCRIPT_DIR%docker-compose.mcp-server.yml" down >nul 2>&1
 echo ✅ Previous MCP server stopped
 
 REM Step 4: Pull latest production image
@@ -58,7 +58,7 @@ echo ✅ Latest production image pulled
 REM Step 5: Start MCP RAG server with docker-compose
 echo.
 echo 🚀 Starting MCP RAG server...
-docker-compose -f "%SCRIPT_DIR%docker-compose.mcp-server.yml" up -d mcp-rag-server
+docker compose -f "%SCRIPT_DIR%docker-compose.mcp-server.yml" up -d mcp-rag-server
 if errorlevel 1 (
     echo ❌ Failed to start MCP RAG server
     exit /b 1
