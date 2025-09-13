@@ -178,18 +178,15 @@ jobs:
           --build-arg GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }} \
           --target production \
           -t ${IMAGE_NAME}:${{ steps.version.outputs.version }} \
-          -t ${IMAGE_NAME}:${{ steps.version.outputs.base_version }} \
           -t ${IMAGE_NAME}:latest \
           .
         
         echo "📤 Pushing Docker images to GitHub Container Registry..."
         docker push ${IMAGE_NAME}:${{ steps.version.outputs.version }}
-        docker push ${IMAGE_NAME}:${{ steps.version.outputs.base_version }}
         docker push ${IMAGE_NAME}:latest
         
         echo "✅ Docker images pushed successfully:"
         echo "   - ${IMAGE_NAME}:${{ steps.version.outputs.version }}"
-        echo "   - ${IMAGE_NAME}:${{ steps.version.outputs.base_version }}"
         echo "   - ${IMAGE_NAME}:latest"
 
     - name: Publish to TestPyPI
