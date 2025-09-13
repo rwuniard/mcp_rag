@@ -64,9 +64,8 @@ def get_version() -> str:
     Get the package version with Git integration.
     
     Returns version in format:
-    - Tagged release: "0.1.1.abc123f" (base version + short SHA)
-    - Development: "0.1.1.abc123f" (same format for consistency)
-    - Fallback: "0.1.1.unknown" if Git is not available
+    - "0.1.1.abc123f" (base version from pyproject.toml + short SHA)
+    - "0.1.1.unknown" if Git is not available
     
     Returns:
         Version string in format: BASE_VERSION.SHA
@@ -76,23 +75,16 @@ def get_version() -> str:
     if _cached_version is not None:
         return _cached_version
     
-    # Get base version from pyproject.toml fallback_version
-    base_version = "0.1.1"
+    # Get base version from package metadata (pyproject.toml)
+    base_version = "0.1.1"  # fallback
     
     try:
-        # Try to get setuptools-scm version first to extract base version
-        scm_version = metadata.version("mcp-rag")
-        logger.debug(f"Raw setuptools-scm version: {scm_version}")
-        
-        # Extract base version from setuptools-scm version (remove dev/post/local parts)
-        # Handle formats like: 0.1.31.post0.dev123+g925f4ee, 0.1.31, 0.1.31.post0, etc.
-        base_match = scm_version.split('.dev')[0].split('.post')[0].split('+')[0]
-        
-        # Take only the first 3 parts (major.minor.patch)
-        version_parts = base_match.split('.')
-        if len(version_parts) >= 3:
-            base_version = f"{version_parts[0]}.{version_parts[1]}.{version_parts[2]}"
-        logger.debug(f"Extracted base version: {base_version}")
+        # Get the static version from pyproject.toml 
+        package_version = metadata.version("mcp-rag")
+        # Use this as base version if it's a simple semantic version
+        if package_version and len(package_version.split('.')) >= 3:
+            base_version = package_version
+        logger.debug(f"Base version from package: {base_version}")
     except metadata.PackageNotFoundError:
         logger.debug("Package not found in metadata, using fallback base version")
     

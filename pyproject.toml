@@ -1,6 +1,6 @@
 [project]
 name = "mcp-rag"
-dynamic = ["version"]
+version = "0.1.1"
 description = "A Retrieval Augmented Generation system using Model Context Protocol"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -34,7 +34,6 @@ dependencies = [
     "pytesseract>=0.3.13",
     "pillow>=11.3.0",
     "beautifulsoup4>=4.13.5",
-    "setuptools-scm[toml]>=8.0",
 ]
 
 [project.optional-dependencies]
@@ -49,7 +48,7 @@ rag-fetch-cli = "rag_fetch.cli:main"
 rag-mcp-server = "rag_fetch.mcp_server:main"
 
 [build-system]
-requires = ["setuptools>=61.0", "setuptools-scm[toml]>=8.0", "wheel"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
@@ -217,8 +216,5 @@ dev = [
     "safety>=3.2.0",
 ]
 
-# Dynamic versioning with Git integration
-[tool.setuptools_scm]
-version_scheme = "post-release"  
-local_scheme = "no-local-version"
-fallback_version = "0.1.1"
+# Static base version - SHA appended by _version.py files
+# Update this version when doing releases
