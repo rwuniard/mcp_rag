@@ -219,6 +219,6 @@ dev = [
 
 # Dynamic versioning with Git integration
 [tool.setuptools_scm]
-version_scheme = "no-guess-dev"
-local_scheme = "node-and-timestamp"
-fallback_version = "0.1.0"
+version_scheme = "post-release"  
+local_scheme = "no-local-version"
+fallback_version = "0.1.1"

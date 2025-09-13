@@ -81,80 +81,68 @@ jobs:
     - name: Install dependencies
       run: uv sync --dev
 
-    - name: Create release tag and determine version
+    - name: Create release version with SHA
       id: version
       run: |
-        # Install the package to get version from setuptools_scm
-        uv sync --dev
+        # Get the base version from pyproject.toml (fallback_version)
+        BASE_VERSION="0.1.1"  # This should match pyproject.toml fallback_version
         
-        # Get current version from setuptools_scm
-        CURRENT_VERSION=$(uv run python -c "from setuptools_scm import get_version; print(get_version())")
-        echo "Current version from setuptools_scm: $CURRENT_VERSION"
-        
-        # For automatic releases, use patch bump
-        # For manual releases, use specified bump type  
-        BUMP_TYPE="${{ github.event.inputs.version_bump || 'patch' }}"
+        # For manual releases, allow version bump
+        BUMP_TYPE="${{ github.event.inputs.version_bump || 'none' }}"
         echo "Version bump type: $BUMP_TYPE"
         
-        # Extract base version (remove any dev/local parts)
-        BASE_VERSION=$(echo "$CURRENT_VERSION" | sed 's/\.dev.*//g' | sed 's/+.*//g')
-        echo "Base version: $BASE_VERSION"
-        
-        # Validate base version format
-        if [[ ! "$BASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-          echo "Warning: Base version '$BASE_VERSION' doesn't match expected format. Using fallback."
-          BASE_VERSION="0.1.5"  # Use last known good version as fallback
+        if [[ "$BUMP_TYPE" != "none" ]]; then
+          # Simple version bumping for manual releases
+          IFS='.' read -ra VERSION_PARTS <<< "$BASE_VERSION"
+          MAJOR=${VERSION_PARTS[0]:-0}
+          MINOR=${VERSION_PARTS[1]:-1}
+          PATCH=${VERSION_PARTS[2]:-1}
+          
+          case $BUMP_TYPE in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
+          
+          BASE_VERSION="$MAJOR.$MINOR.$PATCH"
+          echo "Bumped base version: $BASE_VERSION"
         fi
         
-        # Simple version bumping
-        IFS='.' read -ra VERSION_PARTS <<< "$BASE_VERSION"
-        MAJOR=${VERSION_PARTS[0]:-0}
-        MINOR=${VERSION_PARTS[1]:-0}
-        PATCH=${VERSION_PARTS[2]:-0}
+        # Get short Git SHA
+        GIT_SHA=$(git rev-parse --short HEAD)
+        echo "Git SHA: $GIT_SHA"
         
-        # Validate that we got numeric values
-        if [[ ! "$MAJOR" =~ ^[0-9]+$ ]] || [[ ! "$MINOR" =~ ^[0-9]+$ ]] || [[ ! "$PATCH" =~ ^[0-9]+$ ]]; then
-          echo "Error: Failed to parse version numbers. MAJOR=$MAJOR, MINOR=$MINOR, PATCH=$PATCH"
-          exit 1
-        fi
-        
-        case $BUMP_TYPE in
-          major)
-            MAJOR=$((MAJOR + 1))
-            MINOR=0
-            PATCH=0
-            ;;
-          minor)
-            MINOR=$((MINOR + 1))
-            PATCH=0
-            ;;
-          patch)
-            PATCH=$((PATCH + 1))
-            ;;
-        esac
-        
-        NEW_VERSION="$MAJOR.$MINOR.$PATCH"
-        echo "New version: $NEW_VERSION"
-        
-        # Final validation of new version
-        if [[ ! "$NEW_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-          echo "Error: Generated version '$NEW_VERSION' is not valid"
-          exit 1
-        fi
+        # Create version in format: BASE_VERSION.SHA
+        NEW_VERSION="${BASE_VERSION}.${GIT_SHA}"
+        echo "New version with SHA: $NEW_VERSION"
         
         echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+        echo "base_version=$BASE_VERSION" >> $GITHUB_OUTPUT
+        echo "git_sha=$GIT_SHA" >> $GITHUB_OUTPUT
         
-        # Create the Git tag (this will make setuptools_scm use this version)
+        # Create the Git tag for the base version (not the full version with SHA)
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         
+        # Use base version for git tag, but include SHA in release name
+        TAG_NAME="v$BASE_VERSION"
+        
         # Check if tag already exists
-        if git tag -l "v$NEW_VERSION" | grep -q "v$NEW_VERSION"; then
-          echo "Tag v$NEW_VERSION already exists, skipping tag creation"
+        if git tag -l "$TAG_NAME" | grep -q "$TAG_NAME"; then
+          echo "Tag $TAG_NAME already exists, skipping tag creation"
         else
-          git tag "v$NEW_VERSION"
-          git push origin "v$NEW_VERSION"
-          echo "✅ Created and pushed tag: v$NEW_VERSION"
+          git tag "$TAG_NAME"
+          git push origin "$TAG_NAME"
+          echo "✅ Created and pushed tag: $TAG_NAME"
         fi
 
     - name: Build package
@@ -185,18 +173,23 @@ jobs:
           --build-arg GIT_COMMIT=${{ github.sha }} \
           --build-arg GIT_BRANCH=${{ github.ref_name }} \
           --build-arg VERSION=${{ steps.version.outputs.version }} \
+          --build-arg BASE_VERSION=${{ steps.version.outputs.base_version }} \
+          --build-arg GIT_SHA=${{ steps.version.outputs.git_sha }} \
           --build-arg GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }} \
           --target production \
           -t ${IMAGE_NAME}:${{ steps.version.outputs.version }} \
+          -t ${IMAGE_NAME}:${{ steps.version.outputs.base_version }} \
           -t ${IMAGE_NAME}:latest \
           .
         
         echo "📤 Pushing Docker images to GitHub Container Registry..."
         docker push ${IMAGE_NAME}:${{ steps.version.outputs.version }}
+        docker push ${IMAGE_NAME}:${{ steps.version.outputs.base_version }}
         docker push ${IMAGE_NAME}:latest
         
         echo "✅ Docker images pushed successfully:"
         echo "   - ${IMAGE_NAME}:${{ steps.version.outputs.version }}"
+        echo "   - ${IMAGE_NAME}:${{ steps.version.outputs.base_version }}"
         echo "   - ${IMAGE_NAME}:latest"
 
     - name: Publish to TestPyPI

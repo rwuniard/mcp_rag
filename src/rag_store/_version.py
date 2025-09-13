@@ -1,5 +1,5 @@
 """
-Version information for rag_fetch package.
+Version information for rag_store package.
 
 Provides dynamic version retrieval from Git using setuptools-scm,
 with fallback handling for different deployment scenarios.
